@@ -20,17 +20,14 @@ package org.wso2.openbanking.nextgenpsd2.extensions.utils;
 
 import org.json.JSONObject;
 import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.CommonConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ExtensionEnums;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.EnrichConsentCreationRequestBody;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.StoredAuthorization;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.StoredDetailedConsentResourceData;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponseForResponseAlternation;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponseForResponseAlternationData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaApproach;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaMethod;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.EnrichConsentCreationRequestBody;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredAuthorization;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseForResponseAlternation;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseForResponseAlternationData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,7 +70,7 @@ public class ConsentInitiationUtil {
         headers.put(CommonConstants.ASPSP_SCA_APPROACH, scaApproach.getApproach().toString());
 
         Map<?, ?> attributesMap = (Map<?, ?>) requestBody.getData().getConsentResource().getAttributes();
-        String xRequestId = (String) attributesMap.get("IdempotencyKey");
+        String xRequestId = (String) attributesMap.get(CommonConstants.X_REQUEST_ID_HEADER);
 
         headers.put(CommonConstants.X_REQUEST_ID_PROPER_CASE_HEADER, xRequestId);
 

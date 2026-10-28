@@ -25,31 +25,32 @@ import org.apache.commons.logging.LogFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.CommonConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ExtensionEnums;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.Authorization;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.DetailedConsentResourceData;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.EnrichConsentCreationRequestBody;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.PreProcessConsentCreationRequestBody;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.PreProcessConsentRequestBody;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.PreProcessConsentRetrievalData;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.StoredBasicConsentResourceData;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponseConsentRevocation;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponseForResponseAlternation;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponseForResponseAlternationData;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponsePreProcessConsentCreation;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponseWithDetailedConsentData;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.AccountInitiationPayload;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.TPPMessage;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.Authorization;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.DetailedConsentResourceData;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.EnrichConsentCreationRequestBody;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentCreationRequestBody;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentRequestBody;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentRetrievalData;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredBasicConsentResourceData;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseConsentRevocation;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseForResponseAlternation;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseForResponseAlternationData;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePreProcessConsentCreation;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseWithDetailedConsentData;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.AccountConsentUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentInitiationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionEnums;
 
+import java.util.Map;
 import java.util.Optional;
 
 import javax.ws.rs.core.Response;
@@ -135,6 +136,11 @@ public class AccountConsentInitiationHandler implements ConsentInitiationHandler
                 // setting null for one off consent's validity period
                 consentResource.setValidityTime(0L);
             }
+
+            Map<String, Object> attributes = Map.of(
+                    CommonConstants.X_REQUEST_ID_HEADER, headersJSON.getString(CommonConstants.X_REQUEST_ID_HEADER)
+            );
+            consentResource.setAttributes(attributes);
 
             // Build auth resource for implicit authorisation
             // ToDo: Revisit once explicit authorisation is supported

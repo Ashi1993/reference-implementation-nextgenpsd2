@@ -18,8 +18,8 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.validators.annotations.ValidPeriodicPaymentInitiationPayload;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidPeriodicPaymentInitiationPayload;
 
 import java.time.LocalDate;
 

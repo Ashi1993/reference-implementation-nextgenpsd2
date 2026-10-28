@@ -20,7 +20,7 @@ package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ExtensionEnums;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionEnums;
 
 /**
  * SCA Method class.

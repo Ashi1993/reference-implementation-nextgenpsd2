@@ -18,8 +18,8 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.validators.annotations.ValidBulkPaymentInitiationPayload;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidBulkPaymentInitiationPayload;
 
 import java.time.LocalDate;
 import java.util.List;

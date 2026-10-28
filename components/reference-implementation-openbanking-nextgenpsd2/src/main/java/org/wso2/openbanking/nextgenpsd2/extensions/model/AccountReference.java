@@ -20,7 +20,7 @@ package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
-import org.wso2.openbanking.nextgenpsd2.extensions.validators.annotations.ValidAccountReference;
+import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidAccountReference;
 
 import java.util.HashMap;
 import java.util.Map;

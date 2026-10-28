@@ -24,20 +24,17 @@ import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.CommonConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ExtensionEnums;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.PopulateConsentAuthorizeScreenData;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.StoredAuthorization;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.StoredDetailedConsentResourceData;
-import org.wso2.openbanking.nextgenpsd2.extensions.generated.model.SuccessResponsePopulateConsentAuthorizeScreenData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.BulkPaymentInitiationPayload;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.PeriodicPaymentInitiationPayload;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaMethod;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.SinglePaymentInitiationPayload;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.TPPMessage;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PopulateConsentAuthorizeScreenData;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredAuthorization;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePopulateConsentAuthorizeScreenData;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -109,18 +106,6 @@ public class PaymentConsentUtil {
         } else {
             payload.put(CommonConstants.CHOSEN_SCA_METHOD, chosenSCAMethods.get(0));
         }
-    }
-
-    /**
-     * Method to return a JSON Object with payment product.
-     *
-     * @param consentResourcePath resource path of created consent
-     * @return attribute object
-     */
-    public static Object getPaymentProductAttribute(String consentResourcePath) {
-        JSONObject attributesJSON = new JSONObject();
-        attributesJSON.put(CommonConstants.PAYMENT_PRODUCT_CC, getPaymentProduct(consentResourcePath));
-        return attributesJSON;
     }
 
     /**

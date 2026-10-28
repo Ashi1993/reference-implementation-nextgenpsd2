@@ -18,7 +18,7 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
-import org.wso2.openbanking.nextgenpsd2.extensions.validators.annotations.ValidSinglePaymentInitiationPayload;
+import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidSinglePaymentInitiationPayload;
 
 import java.time.LocalDate;
 

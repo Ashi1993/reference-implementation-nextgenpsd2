@@ -21,7 +21,7 @@ package org.wso2.openbanking.nextgenpsd2.extensions.model;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 
 import java.util.HashMap;
 import java.util.Map;

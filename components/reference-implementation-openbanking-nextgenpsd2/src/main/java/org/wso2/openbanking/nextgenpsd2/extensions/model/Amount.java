@@ -18,7 +18,7 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 
 import javax.validation.constraints.NotBlank;
 

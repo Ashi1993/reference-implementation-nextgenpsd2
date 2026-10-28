@@ -3,8 +3,8 @@ package org.wso2.openbanking.nextgenpsd2.extensions.model;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.ErrorConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.validators.annotations.ValidFundsConfirmationInitiationPayload;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidFundsConfirmationInitiationPayload;
 
 import java.time.LocalDate;
 import java.util.HashMap;

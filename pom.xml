@@ -216,6 +216,11 @@
                     <artifactId>jacoco-maven-plugin</artifactId>
                     <version>${jacoco.version}</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${maven.build.helper.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
@@ -627,6 +632,7 @@
 
         <com.h3xstream.findsecbugs.version>1.12.0</com.h3xstream.findsecbugs.version>
         <maven-spotbugs.version>4.2.3</maven-spotbugs.version>
+        <maven.build.helper.version>1.9.1</maven.build.helper.version>
 
         <!-- OSGi Version ranges -->
         <osgi.framework.imp.pkg.version.range>[1.7.0, 2.0.0)</osgi.framework.imp.pkg.version.range>

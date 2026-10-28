@@ -20,8 +20,8 @@ package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import org.wso2.openbanking.nextgenpsd2.extensions.constants.CommonConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.validators.annotations.ValidAccountAccess;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidAccountAccess;
 
 import java.util.List;
 import java.util.Map;
