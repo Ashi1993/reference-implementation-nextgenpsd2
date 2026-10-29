@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
  * <p>
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -35,6 +35,6 @@ public class EnrichEventSubscriptionResponseApiImpl {
      */
     public static Response handleEnrichEventSubscription(EventSubscriptionRequestBody eventSubscriptionRequestBody) {
 
-        return Response.ok().entity("magic!").build();
+        return Response.status(501).build();
     }
 }

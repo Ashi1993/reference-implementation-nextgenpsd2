@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
  * <p>
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -55,7 +55,7 @@ public class PreProcessConsentCreationApiImpl {
 
             JSONObject headersJSON = CommonConsentValidationUtil.convertObjectToJson(requestBody.getData()
                     .getRequestHeaders());
-            xRequestId = headersJSON.optString("x-request-id");
+            xRequestId = headersJSON.optString(CommonConstants.X_REQUEST_ID_HEADER);
 
             // Validate consent initiation data format
             CommonConsentValidationUtil.validatePayloadFormat(requestBody);

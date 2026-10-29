@@ -672,8 +672,7 @@ public class CommonConsentValidationUtil {
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.X_REQUEST_ID_MISSING));
         }
 
-        if (!CommonConsentValidationUtil.isValidUuid(headersJSON
-                .getString(CommonConstants.X_REQUEST_ID_HEADER))) {
+        if (!CommonConsentValidationUtil.isValidUuid(headersJSON.getString(CommonConstants.X_REQUEST_ID_HEADER))) {
             throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
                     ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.X_REQUEST_ID_INVALID));
@@ -1111,8 +1110,7 @@ public class CommonConsentValidationUtil {
             throws ExtensionException, ValidationFailureException {
         JSONObject consentInitiationDataJSON;
         try {
-            consentInitiationDataJSON = convertObjectToJson(requestBody.getData()
-                    .getConsentInitiationData());
+            consentInitiationDataJSON = convertObjectToJson(requestBody.getData().getConsentInitiationData());
 
             if (consentInitiationDataJSON.isEmpty()) {
                 // If payload is empty
