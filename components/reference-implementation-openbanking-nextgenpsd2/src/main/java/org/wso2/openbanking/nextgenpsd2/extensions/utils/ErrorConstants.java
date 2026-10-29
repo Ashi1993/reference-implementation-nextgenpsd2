@@ -80,6 +80,10 @@ public class ErrorConstants {
     public static final String NO_VALID_ACCOUNTS_FOR_CONSENT = "No valid accounts for this consent";
     public static final String CONSENT_EXPIRED = "The consent is expired";
     public static final String CONSENT_INVALID_STATE = "Consent is not in a valid state";
+    public static final String DATA_REQUEST_CONTEXT_MISSING = "The data access request context is not "
+            + "available to validate the request against the consent";
+    public static final String PAYMENT_ID_CONSENT_ID_MISMATCH = "Payment ID in the path mismatches with the "
+            + "payment consent ID";
     public static final String AUTHORISATION_NOT_PSU_AUTHENTICATED_STATE = "Authorisation resource is not in " +
             "a PSU Authenticated state";
     public static final String INCORRECT_CONSENT_DATA = "Received invalid consent data";
@@ -95,6 +99,32 @@ public class ErrorConstants {
     public static final String AMOUNT_IS_MISSING = "Amount is missing in instructed amount";
     public static final String CURRENCY_CODE_MISSING = "Currency code is missing in instructed amount";
     public static final String CREDITOR_NAME_MISSING = "Creditor name is missing in payments payload";
+    public static final String CREDITOR_NAME_INVALID = "Creditor name exceeds the maximum allowed length of 70 " +
+            "characters";
+    public static final String CREDITOR_AGENT_INVALID = "Creditor agent is not a valid BICFI";
+    public static final String CREDITOR_AGENT_NAME_INVALID = "Creditor agent name exceeds the maximum allowed " +
+            "length of 70 characters";
+    public static final String REMITTANCE_INFO_UNSTRUCTURED_INVALID = "Unstructured remittance information exceeds " +
+            "the maximum allowed length of 140 characters";
+    public static final String END_TO_END_IDENTIFICATION_INVALID = "End to end identification exceeds the maximum " +
+            "allowed length of 35 characters";
+    public static final String CURRENCY_CODE_INVALID = "Currency code must be a valid ISO 4217 alpha 3 code";
+    public static final String AMOUNT_VALUE_INVALID = "Amount must contain up to 14 significant figures with up to " +
+            "3 decimal places, using a dot as the decimal separator";
+    public static final String IBAN_INVALID = "Provided IBAN is in an incorrect format";
+    public static final String BBAN_INVALID = "Provided BBAN is in an incorrect format";
+    public static final String PAN_INVALID = "Provided PAN exceeds the maximum allowed length of 35 characters";
+    public static final String MASKED_PAN_INVALID = "Provided masked PAN exceeds the maximum allowed length of 35 " +
+            "characters";
+    public static final String MSISDN_INVALID = "Provided MSISDN exceeds the maximum allowed length of 35 characters";
+    public static final String ACCOUNT_REFERENCE_CURRENCY_INVALID = "Currency of the account reference must be a " +
+            "valid ISO 4217 alpha 3 code";
+    public static final String COUNTRY_CODE_MISSING = "Country is missing in the creditor address";
+    public static final String COUNTRY_CODE_INVALID = "Country must be a valid ISO 3166 alpha 2 code";
+    public static final String STREET_NAME_INVALID = "Street name exceeds the maximum allowed length of 70 characters";
+    public static final String FORBIDDEN_BULK_ENTRY_ELEMENT = "A bulk payment entry must not contain debtorAccount, " +
+            "requestedExecutionDate or requestedExecutionTime";
+    public static final String EXECUTION_TIME_INVALID = "Requested execution time must be a valid date-time value";
     public static final String START_DATE_MISSING = "Start date is missing in periodic payments payload";
     public static final String START_DATE_INVALID = "Invalid start date";
     public static final String FREQUENCY_MISSING = "Frequency is missing in periodic payments payload";
@@ -151,6 +181,11 @@ public class ErrorConstants {
             "required attributes";
     public static final String INVALID_USE_OF_ADDITIONAL_INFO_ATTRIBUTE = "The \"additionalInformation\" attribute " +
             "can only be used together with at least one of the major \"access\" attributes";
+    public static final String ADDITIONAL_INFO_ACCOUNT_NOT_ADDRESSED = "Every account addressed within the " +
+            "\"additionalInformation\" attribute must also be addressed by the \"accounts\", \"balances\" or " +
+            "\"transactions\" attribute";
+    public static final String ADDITIONAL_INFO_ARRAY_NOT_EMPTY = "The arrays of the \"additionalInformation\" " +
+            "attribute must be empty when the \"accounts\", \"balances\" and \"transactions\" arrays are empty";
     public static final String INVALID_FREQ_PER_DAY = "Frequency per day have to be greater than zero";
     public static final String INVALID_FREQ_PER_DAY_COUNT = "Set frequency per day attribute as 1 for one time " +
             "account access";

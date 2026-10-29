@@ -2,6 +2,8 @@ package org.wso2.openbanking.nextgenpsd2.extensions.model.consent;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import java.util.HashMap;
+import java.util.Map;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
 import javax.validation.constraints.*;
 import javax.validation.Valid;
@@ -12,6 +14,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 
 
 
@@ -21,6 +25,7 @@ public class ValidateConsentAccessData   {
   private String consentId;
   private StoredDetailedConsentResourceData consentResource;
   private Object dataRequestPayload;
+  private Map<String, Object> additionalProperties = new HashMap<>();
 
   public ValidateConsentAccessData() {
   }
@@ -82,6 +87,20 @@ public class ValidateConsentAccessData   {
   @JsonProperty("dataRequestPayload")
   public void setDataRequestPayload(Object dataRequestPayload) {
     this.dataRequestPayload = dataRequestPayload;
+  }
+
+  /**
+   * Context of the data request that the accelerator sends beyond the declared schema, such as the request
+   * headers, the resource parameters, the client ID and the user ID.
+   **/
+  @JsonAnyGetter
+  public Map<String, Object> getAdditionalProperties() {
+    return this.additionalProperties;
+  }
+
+  @JsonAnySetter
+  public void setAdditionalProperty(String name, Object value) {
+    this.additionalProperties.put(name, value);
   }
 
 

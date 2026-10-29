@@ -35,6 +35,12 @@ public class ConfigurationConstants {
     public static final String FREQ_PER_DAY = "4";
     public static final String VALID_UNTIL_DATE_CAP_ENABLED = "false";
     public static final String VALID_UNTIL_DAYS = "0";
+    // Validate the requested account ID against the accounts bound to the consent
+    public static final boolean ACCOUNT_ID_VALIDATION_ENABLED = false;
+    public static final boolean COF_ACCOUNT_ID_VALIDATION_ENABLED = false;
+    // Reject a data access request when the accelerator does not send the data request context
+    // (headers, resource parameters, client ID and user ID) to the validate-consent-access endpoint
+    public static final boolean REQUIRE_CONSENT_ACCESS_CONTEXT = false;
     public static final List<Map<String, String>> SUPPORTED_SCA_APPROACHES = List.of(
             Map.of(
                     "Name", "REDIRECT",

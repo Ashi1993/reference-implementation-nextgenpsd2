@@ -35,13 +35,17 @@ import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentAuthorizationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
+import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentValidationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.AccountConsentAuthorizeHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.AccountConsentInitiationHandler;
+import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.AccountConsentValidationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.ConsentAuthorisationInitiationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.FundsConfirmationConsentAuthorizeHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.FundsConfirmationConsentInitiationHandler;
+import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.FundsConfirmationConsentValidationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.PaymentConsentAuthorizeHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.PaymentConsentInitiationHandler;
+import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.PaymentConsentValidationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.AccountReference;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaApproach;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaMethod;
@@ -247,6 +251,33 @@ public class CommonConsentValidationUtil {
             authorizationHandler = new FundsConfirmationConsentAuthorizeHandler();
         }
         return authorizationHandler;
+    }
+
+    /**
+     * Method to get the consent validation handler for the type of the consent being accessed.
+     *
+     * @param consentType consent type of the consent being accessed
+     * @return the selected consent validation handler
+     * @throws ValidationFailureException if the consent type is not recognised
+     * @throws ExtensionException if construction of the error failed
+     */
+    public static ConsentValidationHandler getConsentValidationHandler(String consentType)
+            throws ValidationFailureException, ExtensionException {
+
+        if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.ACCOUNTS.toString(), consentType)) {
+            return new AccountConsentValidationHandler();
+        }
+        if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString(), consentType)
+                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString(), consentType)
+                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString(), consentType)) {
+            return new PaymentConsentValidationHandler();
+        }
+        if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.FUNDS_CONFIRMATION.toString(), consentType)) {
+            return new FundsConfirmationConsentValidationHandler();
+        }
+        throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+                ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
+                        TPPMessage.CodeEnum.CONSENT_UNKNOWN, ErrorConstants.INITIATED_CONSENT_TYPE_INVALID));
     }
 
     /**

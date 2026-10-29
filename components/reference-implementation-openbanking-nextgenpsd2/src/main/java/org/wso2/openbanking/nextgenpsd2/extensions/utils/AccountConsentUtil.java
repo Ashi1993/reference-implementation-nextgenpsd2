@@ -223,7 +223,7 @@ public class AccountConsentUtil {
             return ExtensionEnums.PermissionEnum.AVAILABLE_ACCOUNTS.toString();
         }
 
-        if (accessObject.getAvailableAccountsWithBalances() != null) {
+        if (accessObject.getAvailableAccountsWithBalance() != null) {
             return ExtensionEnums.PermissionEnum.AVAILABLE_ACCOUNTS_WITH_BALANCES.toString();
         }
 

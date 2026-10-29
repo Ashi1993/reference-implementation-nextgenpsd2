@@ -18,8 +18,17 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.impl.consent;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
+import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
+import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentValidationHandler;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.ConsentAccessContext;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.common.SuccessResponse;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.ValidateConsentAccessRequestBody;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentValidationUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -27,6 +36,8 @@ import javax.ws.rs.core.Response;
  * Implementation class for validating consent access.
  */
 public class ValidateConsentAccessApiImpl {
+
+    private static final Log log = LogFactory.getLog(ValidateConsentAccessApiImpl.class);
 
     /**
      * Handles validating consent access.
@@ -37,10 +48,43 @@ public class ValidateConsentAccessApiImpl {
     public static Response handleConsentAccessValidation(
             ValidateConsentAccessRequestBody validateConsentAccessRequestBody) {
 
-        SuccessResponse successResponse = new SuccessResponse();
-        successResponse.setResponseId(validateConsentAccessRequestBody.getRequestId());
-        successResponse.setStatus(SuccessResponse.StatusEnum.SUCCESS);
+        String requestId = validateConsentAccessRequestBody.getRequestId();
+        try {
+            StoredDetailedConsentResourceData consentResource =
+                    validateConsentAccessRequestBody.getData().getConsentResource();
 
-        return Response.ok().entity(successResponse).build();
+            ConsentAccessContext context = new ConsentAccessContext(
+                    validateConsentAccessRequestBody.getData().getAdditionalProperties());
+
+            // Validate the headers and the token the data access request was made with
+            ConsentValidationUtil.validateDataRequestContext(requestId, consentResource, context);
+
+            // Validate that the request path belongs to the service the consent was initiated under
+            if (context.hasResourcePath()) {
+                ConsentValidationUtil.validateResourcePathAgainstConsentType(consentResource.getType(),
+                        context.getResourcePath());
+            }
+
+            ConsentValidationHandler consentValidationHandler = CommonConsentValidationUtil
+                    .getConsentValidationHandler(consentResource.getType());
+
+            consentValidationHandler.validateConsentAccess(validateConsentAccessRequestBody, context);
+
+            SuccessResponse successResponse = new SuccessResponse();
+            successResponse.setResponseId(requestId);
+            successResponse.setStatus(SuccessResponse.StatusEnum.SUCCESS);
+
+            return Response.ok().entity(successResponse).build();
+
+        } catch (ValidationFailureException e) {
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("[%s] Validation failed for consent access. Returning failed response.",
+                        requestId), e);
+            }
+            return Response.ok().entity(e.toJsonString()).build();
+        } catch (ExtensionException e) {
+            log.error(String.format("[%s] An error occurred validating consent access.", requestId), e);
+            return Response.status(e.getStatus()).entity(e.toJsonString()).build();
+        }
     }
 }

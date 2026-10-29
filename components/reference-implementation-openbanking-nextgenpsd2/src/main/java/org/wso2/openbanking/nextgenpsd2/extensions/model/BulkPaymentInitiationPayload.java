@@ -18,6 +18,7 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidBulkPaymentInitiationPayload;
 
@@ -26,6 +27,7 @@ import java.util.List;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 
 /**
@@ -40,6 +42,8 @@ public class BulkPaymentInitiationPayload {
 
     private LocalDate requestedExecutionDate;
 
+    @Pattern(regexp = CommonConstants.DATE_TIME_PATTERN,
+            message = "FORMAT_ERROR:" + ErrorConstants.EXECUTION_TIME_INVALID)
     private String requestedExecutionTime;
 
     private boolean batchBookingPreferred;

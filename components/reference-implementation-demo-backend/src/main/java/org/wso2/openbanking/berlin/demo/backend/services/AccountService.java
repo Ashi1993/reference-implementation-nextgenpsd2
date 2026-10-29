@@ -18,10 +18,14 @@
 
 package org.wso2.openbanking.berlin.demo.backend.services;
 
+import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
+import net.minidev.json.JSONValue;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import java.util.Set;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
@@ -32,10 +36,16 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
+import static org.wso2.openbanking.berlin.demo.backend.utils.Constants.AccountService.ACCOUNTS;
 import static org.wso2.openbanking.berlin.demo.backend.utils.Constants.AccountService.CODE;
+import static org.wso2.openbanking.berlin.demo.backend.utils.Constants.AccountService.CURRENCY;
+import static org.wso2.openbanking.berlin.demo.backend.utils.Constants.AccountService.IBAN;
 import static org.wso2.openbanking.berlin.demo.backend.utils.Constants.AccountService.MESSAGE;
 import static org.wso2.openbanking.berlin.demo.backend.utils.Constants.AccountService.REQUEST_ID;
 import static org.wso2.openbanking.berlin.demo.backend.utils.Constants.AccountService.VALID;
+import static org.wso2.openbanking.berlin.demo.backend.utils.Utility.getPermittedAccountKeys;
+import static org.wso2.openbanking.berlin.demo.backend.utils.Utility.isAccountPermitted;
+import static org.wso2.openbanking.berlin.demo.backend.utils.Utility.validateAccountAccess;
 import static org.wso2.openbanking.berlin.demo.backend.utils.Utility.validateRequestHeader;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -92,81 +102,142 @@ public class AccountService {
     @Path("/accounts")
     @Produces("application/json")
     public Response getAccounts(@HeaderParam("X-Request-ID") String requestID,
-                                @HeaderParam("Consent-ID") String consentID) {
+                                @HeaderParam("Consent-ID") String consentID,
+                                @HeaderParam("Account-Request-Information") String accountInfoHeader) {
 
         log.info("GET /accounts endpoint called.");
         //Example 1 : pg 98
         String response = "{\"accounts\":\n" +
                 " [\n" +
-                " {\"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
-                " \"iban\": \"DE2310010010123456789\",\n" +
-                " \"currency\": \"EUR\",\n" +
-                "\"product\": \"Wso3123\",\n" +
-                " \"cashAccountType\": \"CurrentAccount\",\n" +
-                " \"name\": \"Main Account\",\n" +
-                " \"_links\": {\n" +
-                "\"balances\": {\"href\": \"/accounts/3dc3d5b3-7023-4848-9853-" +
-                "f5400a64e80f/balances\"},\n" +
-                "\"transactions\": {\"href\": \"/accounts/3dc3d5b3-7023-4848-9853-" +
-                "f5400a64e80f/transactions\"}}\n" +
-                " },\n" +
-                " {\"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e81g\",\n" +
-                " \"iban\": \"DE2310010010123456788\",\n" +
-                " \"currency\": \"USD\",\n" +
-                " \"product\": \"Fremdwährungskonto\",\n" +
-                " \"cashAccountType\": \"CurrentAccount\",\n" +
-                " \"name\": \"US Dollar Account\",\n" +
-                " \"_links\": {\n" +
-                "\"balances\": {\"href\": \"/accounts/3dc3d5b3-7023-4848-9853-" +
-                "f5400a64e81g/balances\" }}\n" +
-                " },\n" +
-                "{\"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
-                "\"iban\": \"DE12345678901234567890\",\n" +
-                "\"currency\": \"XXX\",\n" +
-                "\"product\": \"Multi currency account\",\n" +
-                "\"cashAccountType\": \"CACC\",\n" +
-                "\"name\": \"Aggregation Account\",\n" +
-                "\"_links\": {\n" +
-                "\"balances\": {\n" +
-                "\"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e333/balances\"\n" +
-                "},\n" +
-                "\"transactions\": {\n" +
-                "\"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e333/transactions\"\n" +
-                "}\n" +
-                "}\n" +
-                "}, {\n" +
-                "\"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
-                "\"iban\": \"DE12345678901234567890\",\n" +
-                "\"currency\": \"EUR\",\n" +
-                "\"product\": \"Girokonto\",\n" +
-                "\"cashAccountType\": \"CACC\",\n" +
-                "\"name\": \"Main Account\",\n" +
-                "\"_links\": {\n" +
-                "\"balances\": {\n" +
-                "\"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/balances\"\n" +
-                "},\n" +
-                "\"transactions\": {\n" +
-                "\"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/transactions\"\n" +
-                "}\n" +
-                "}\n" +
-                "},\n" +
-                "{\n" +
-                "\"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e81g\",\n" +
-                "\"iban\": \"DE12345678901234567890\",\n" +
-                "\"currency\": \"USD\",\n" +
-                "\"product\": \"Fremdwährungskonto\",\n" +
-                "\"cashAccountType\": \"CACC\",\n" +
-                "\"name\": \"US Dollar Account\",\n" +
-                "\"_links\": {\n" +
-                "\"balances\": {\n" +
-                "\"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e81g/balances\"\n" +
-                "},\n" +
-                "\"transactions\": {\n" +
-                "\"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e81g/transactions\"\n" +
-                "}\n" +
-                "}\n" +
-                "}" +
-                "]}";
+                "   {" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
+                "       \"iban\": \"DE2310010010123456789\",\n" +
+                "       \"currency\": \"EUR\",\n" +
+                "       \"product\": \"Wso3123\",\n" +
+                "       \"cashAccountType\": \"CurrentAccount\",\n" +
+                "       \"name\": \"Main Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/balances\"\n" +
+                "           },\n" +
+                "           \"transactions\": {\n" +
+                "               \"href\": \"/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/transactions\"\n" +
+                "           }\n" +
+                "       }\n" +
+                "   },\n" +
+                "   {" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e81g\",\n" +
+                "       \"iban\": \"BARC12345612345678\",\n" +
+                "       \"currency\": \"USD\",\n" +
+                "       \"product\": \"Fremdwährungskonto\",\n" +
+                "       \"cashAccountType\": \"CurrentAccount\",\n" +
+                "       \"name\": \"US Dollar Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/accounts/3dc3d5b3-7023-4848-9853-f5400a64e81g/balances\"\n" +
+                "           }\n" +
+                "        }\n" +
+                "   },\n" +
+                "   {\n" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
+                "       \"iban\": \"5409050000000000\",\n" +
+                "       \"currency\": \"USD\",\n" +
+                "       \"product\": \"Multi currency account\",\n" +
+                "       \"cashAccountType\": \"CACC\",\n" +
+                "       \"name\": \"Aggregation Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e333/balances\"\n" +
+                "            },\n" +
+                "           \"transactions\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e333/transactions\"\n" +
+                "           }\n" +
+                "       }\n" +
+                "   }\n, " +
+                "   {\n" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
+                "       \"iban\": \"123456xxxxxx1234\",\n" +
+                "       \"currency\": \"USD\",\n" +
+                "       \"product\": \"Girokonto\",\n" +
+                "       \"cashAccountType\": \"CACC\",\n" +
+                "       \"name\": \"Main Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/balances\"\n" +
+                "           },\n" +
+                "           \"transactions\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/transactions\"\n" +
+                "           }\n" +
+                "       }\n" +
+                "   },\n" +
+                "   {\n" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
+                "       \"iban\": \"BARC12345612345678\",\n" +
+                "       \"currency\": \"EUR\",\n" +
+                "       \"product\": \"Girokonto\",\n" +
+                "       \"cashAccountType\": \"CACC\",\n" +
+                "       \"name\": \"Main Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/balances\"\n" +
+                "           },\n" +
+                "           \"transactions\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/transactions\"\n" +
+                "           }\n" +
+                "       }\n" +
+                "   },\n" +
+                "   {\n" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
+                "       \"iban\": \"5409050000000000\",\n" +
+                "       \"currency\": \"EUR\",\n" +
+                "       \"product\": \"Girokonto\",\n" +
+                "       \"cashAccountType\": \"CACC\",\n" +
+                "       \"name\": \"Main Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/balances\"\n" +
+                "           },\n" +
+                "           \"transactions\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/transactions\"\n" +
+                "           }\n" +
+                "       }\n" +
+                "   },\n" +
+                "   {\n" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e80f\",\n" +
+                "       \"iban\": \"123456xxxxxx1234\",\n" +
+                "       \"currency\": \"EUR\",\n" +
+                "       \"product\": \"Girokonto\",\n" +
+                "       \"cashAccountType\": \"CACC\",\n" +
+                "       \"name\": \"Main Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/balances\"\n" +
+                "           },\n" +
+                "           \"transactions\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e80f/transactions\"\n" +
+                "           }\n" +
+                "       }\n" +
+                "   },\n" +
+                "   {\n" +
+                "       \"resourceId\": \"3dc3d5b3-7023-4848-9853-f5400a64e81g\",\n" +
+                "       \"iban\": \"DE12345678901234567890\",\n" +
+                "       \"currency\": \"USD\",\n" +
+                "       \"product\": \"Fremdwährungskonto\",\n" +
+                "       \"cashAccountType\": \"CACC\",\n" +
+                "       \"name\": \"US Dollar Account\",\n" +
+                "       \"_links\": {\n" +
+                "           \"balances\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e81g/balances\"\n" +
+                "           },\n" +
+                "           \"transactions\": {\n" +
+                "               \"href\": \"/v1/accounts/3dc3d5b3-7023-4848-9853-f5400a64e81g/transactions\"\n" +
+                "           }\n" +
+                "       }\n" +
+                "   }\n" +
+                "]\n" +
+                "}";
+
+        response = filterAccountsByConsent(response, accountInfoHeader);
 
         return Response.ok(response).header(REQUEST_ID, requestID)
                 .header("Access-Control-Allow-Origin", "https://localhost:9446")
@@ -174,6 +245,54 @@ public class AccountService {
                 .header("Access-Control-Allow-Headers", "Content-Type, X-Token, X-Request-ID, Consent-ID, " +
                         "Origin, Accept, Authorization, Content-Range, Content-Disposition, Content-Description")
                 .build();
+    }
+
+    /**
+     * Retains only the accounts that the consent of the Account-Request-Information header grants access to.
+     *
+     * <p>The accounts of the bank are returned unfiltered when the header is absent or cannot be read, so that the
+     * endpoint keeps working for callers that do not go through the accelerator.</p>
+     *
+     * @param accountsResponse   response holding all accounts of the bank
+     * @param accountInforHeader value of the Account-Request-Information header
+     * @return the response holding only the permitted accounts
+     */
+    private static String filterAccountsByConsent(String accountsResponse, String accountInforHeader) {
+
+        Set<String> permittedAccountKeys = getPermittedAccountKeys(accountInforHeader);
+        if (permittedAccountKeys == null) {
+            log.debug("Accounts of the consent could not be determined. Returning all accounts.");
+            return accountsResponse;
+        }
+
+        Object parsedResponse = JSONValue.parse(accountsResponse);
+        if (!(parsedResponse instanceof JSONObject)) {
+            return accountsResponse;
+        }
+        Object accounts = ((JSONObject) parsedResponse).get(ACCOUNTS);
+        if (!(accounts instanceof JSONArray)) {
+            return accountsResponse;
+        }
+
+        JSONArray permittedAccounts = new JSONArray();
+        for (Object account : (JSONArray) accounts) {
+            if (!(account instanceof JSONObject)) {
+                continue;
+            }
+            JSONObject bankAccount = (JSONObject) account;
+            String iban = String.valueOf(bankAccount.get(IBAN));
+            String currency = bankAccount.get(CURRENCY) == null ? null : String.valueOf(bankAccount.get(CURRENCY));
+            if (isAccountPermitted(permittedAccountKeys, iban, currency)) {
+                permittedAccounts.add(bankAccount);
+            }
+        }
+
+        log.info(String.format("Returning %s of %s accounts permitted by the consent.", permittedAccounts.size(),
+                ((JSONArray) accounts).size()));
+
+        JSONObject filteredResponse = new JSONObject();
+        filteredResponse.put(ACCOUNTS, permittedAccounts);
+        return filteredResponse.toJSONString();
     }
 
     /**
@@ -189,10 +308,16 @@ public class AccountService {
     @Produces("application/json")
     public Response getAccount(@PathParam("AccountId") String accountID,
                                @HeaderParam("X-Request-ID") String requestID,
-                               @HeaderParam("Consent-ID") String consentID) {
+                               @HeaderParam("Consent-ID") String consentID,
+                               @HeaderParam("Account-Request-Information") String accountInfoHeader) {
 
-        log.info("GET /accounts/{AccountId} endpoint called.");
+        log.debug("GET /accounts/{AccountId} endpoint called.");
         JSONObject responseJSON = validateRequestHeader(requestID, consentID);
+        if (!(VALID.equals(responseJSON.get(MESSAGE)))) {
+            return Response.status(FORBIDDEN).entity(responseJSON.toJSONString()).build();
+        }
+
+        responseJSON = validateAccountAccess(accountID, accountInfoHeader);
         if (!(VALID.equals(responseJSON.get(MESSAGE)))) {
             return Response.status(FORBIDDEN).entity(responseJSON.toJSONString()).build();
         }

@@ -80,6 +80,50 @@ public class AccountReferenceValidator implements ConstraintValidator<ValidAccou
             }
         }
 
+        // Ensure each provided element complies with the format defined by the PIS specification
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+            String formatError = validateElementFormat(entry.getKey(), entry.getValue());
+            if (formatError != null) {
+                CommonConsentValidationUtil.setConstrainViolation(context,
+                        CommonConsentValidationUtil.buildViolationMessage(formatError));
+                return false;
+            }
+        }
+
         return true;
+    }
+
+    /**
+     * Validates a single account reference element against the format defined by the PIS specification.
+     *
+     * @param key   name of the account reference element
+     * @param value value of the account reference element
+     * @return the error message if the value is in an incorrect format, null otherwise
+     */
+    private static String validateElementFormat(String key, String value) {
+        switch (key) {
+            case CommonConstants.IBAN:
+                return value.matches(CommonConstants.IBAN_PATTERN) ? null : ErrorConstants.IBAN_INVALID;
+
+            case CommonConstants.BBAN:
+                return value.matches(CommonConstants.BBAN_PATTERN) ? null : ErrorConstants.BBAN_INVALID;
+
+            case CommonConstants.PAN:
+                return value.length() <= CommonConstants.MAX_PAN_LENGTH ? null : ErrorConstants.PAN_INVALID;
+
+            case CommonConstants.MASKED_PAN:
+                return value.length() <= CommonConstants.MAX_MASKED_PAN_LENGTH
+                        ? null : ErrorConstants.MASKED_PAN_INVALID;
+
+            case CommonConstants.MSISDN:
+                return value.length() <= CommonConstants.MAX_MSISDN_LENGTH ? null : ErrorConstants.MSISDN_INVALID;
+
+            case CommonConstants.CURRENCY:
+                return value.matches(CommonConstants.CURRENCY_CODE_PATTERN)
+                        ? null : ErrorConstants.ACCOUNT_REFERENCE_CURRENCY_INVALID;
+
+            default:
+                return null;
+        }
     }
 }

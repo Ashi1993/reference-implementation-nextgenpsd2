@@ -54,6 +54,7 @@ public class AccountInitiationPayloadValidator implements
         ) {
             CommonConsentValidationUtil.setConstrainViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.MANDATORY_ELEMENTS_MISSING));
+            return false;
         }
 
         if (!payload.getRecurringIndicator() && payload.getFrequencyPerDay() > 1) {

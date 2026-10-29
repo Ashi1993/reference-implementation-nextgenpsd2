@@ -40,6 +40,28 @@ public final class Constants {
         public static final String PENDING = "pending";
         public static final String BOTH = "both";
 
+        // Elements of the consent carried by the Account-Request-Information header
+        public static final String ACCOUNTS = "accounts";
+        public static final String IBAN = "iban";
+        public static final String CURRENCY = "currency";
+        public static final String RECEIPT = "receipt";
+        public static final String ACCESS = "access";
+        public static final String CONSENT_MAPPING_RESOURCES = "consentMappingResources";
+        public static final String MAPPING_STATUS = "mappingStatus";
+        public static final String ACTIVE = "active";
+        public static final String ACCOUNT_ID = "account_id";
+        public static final String PERMISSION = "permission";
+
+        // Separators used within the account identifiers of the consent mapping resources, e.g. "iban:DE12:USD"
+        public static final String ACCOUNT_ID_SEPARATOR = ":";
+        public static final String ACCOUNT_KEY_SEPARATOR = "|";
+
+        // Matches any currency of an account reference that was permitted without a currency
+        public static final String ANY_CURRENCY = "*";
+
+        public static final String ACCOUNT_NOT_IN_CONSENT = "The requested account is not granted access to by the " +
+                "consent";
+
         private AccountService() {
 
         }

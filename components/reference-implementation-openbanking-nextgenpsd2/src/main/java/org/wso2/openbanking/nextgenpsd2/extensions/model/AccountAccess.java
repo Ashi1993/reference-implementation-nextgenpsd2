@@ -18,13 +18,13 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.validator.consent.ValidAccountAccess;
 
 import java.util.List;
-import java.util.Map;
 
 import javax.validation.Valid;
 
@@ -72,10 +72,18 @@ public class AccountAccess {
     private List<@Valid AccountReference> transactions;
 
     private AccessScope availableAccounts;
-    private AccessScope availableAccountsWithBalances;
+
+    /**
+     * Named "availableAccountsWithBalance" by the specification. The former misspelling is kept as an alias so that
+     * consent receipts persisted before the correction can still be read back.
+     */
+    @JsonAlias("availableAccountsWithBalances")
+    private AccessScope availableAccountsWithBalance;
+
     private AccessScope allPsd2;
 
-    private Map<String, Object> additionalInformation;
+    @Valid
+    private AdditionalInformationAccess additionalInformation;
 
     public List<AccountReference> getAccounts() {
         return accounts;
@@ -109,12 +117,12 @@ public class AccountAccess {
         this.availableAccounts = availableAccounts;
     }
 
-    public AccessScope getAvailableAccountsWithBalances() {
-        return availableAccountsWithBalances;
+    public AccessScope getAvailableAccountsWithBalance() {
+        return availableAccountsWithBalance;
     }
 
-    public void setAvailableAccountsWithBalances(AccessScope availableAccountsWithBalances) {
-        this.availableAccountsWithBalances = availableAccountsWithBalances;
+    public void setAvailableAccountsWithBalance(AccessScope availableAccountsWithBalance) {
+        this.availableAccountsWithBalance = availableAccountsWithBalance;
     }
 
     public AccessScope getAllPsd2() {
@@ -125,11 +133,11 @@ public class AccountAccess {
         this.allPsd2 = allPsd2;
     }
 
-    public Map<String, Object> getAdditionalInformation() {
+    public AdditionalInformationAccess getAdditionalInformation() {
         return additionalInformation;
     }
 
-    public void setAdditionalInformation(Map<String, Object> additionalInformation) {
+    public void setAdditionalInformation(AdditionalInformationAccess additionalInformation) {
         this.additionalInformation = additionalInformation;
     }
 }

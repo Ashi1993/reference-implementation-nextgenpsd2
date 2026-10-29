@@ -19,7 +19,9 @@
 package org.wso2.openbanking.nextgenpsd2.extensions.validator.consent;
 
 import org.wso2.openbanking.nextgenpsd2.extensions.model.BulkPaymentInitiationPayload;
+import org.wso2.openbanking.nextgenpsd2.extensions.model.PaymentInstruction;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 
 import javax.validation.ConstraintValidator;
@@ -43,6 +45,22 @@ public class BulkPaymentInitiationPayloadValidator implements
             CommonConsentValidationUtil.setConstrainViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.EXECUTION_DATE_TIME_ERROR));
             return false;
+        }
+
+        // Bulk entries must not carry the elements that only belong to the enclosing bulk payment
+        if (payload.getPayments() != null) {
+            for (PaymentInstruction entry : payload.getPayments()) {
+                if (entry == null) {
+                    continue;
+                }
+                for (String forbiddenElement : CommonConstants.FORBIDDEN_BULK_ENTRY_ELEMENTS) {
+                    if (entry.getAdditionalProperties().containsKey(forbiddenElement)) {
+                        CommonConsentValidationUtil.setConstrainViolation(context, CommonConsentValidationUtil
+                                .buildViolationMessage(ErrorConstants.FORBIDDEN_BULK_ENTRY_ELEMENT));
+                        return false;
+                    }
+                }
+            }
         }
 
         return true;

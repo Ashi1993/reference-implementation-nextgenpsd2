@@ -18,9 +18,11 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
 
 /**
  * Amount object for payment consent initiation payloads.
@@ -28,9 +30,13 @@ import javax.validation.constraints.NotBlank;
 public class Amount {
 
     @NotBlank(message = "FORMAT_ERROR:" + ErrorConstants.CURRENCY_CODE_MISSING)
+    @Pattern(regexp = CommonConstants.CURRENCY_CODE_PATTERN,
+            message = "FORMAT_ERROR:" + ErrorConstants.CURRENCY_CODE_INVALID)
     private String currency;
 
     @NotBlank(message = "FORMAT_ERROR:" + ErrorConstants.AMOUNT_IS_MISSING)
+    @Pattern(regexp = CommonConstants.AMOUNT_VALUE_PATTERN,
+            message = "FORMAT_ERROR:" + ErrorConstants.AMOUNT_VALUE_INVALID)
     private String amount;
 
     public String getCurrency() {

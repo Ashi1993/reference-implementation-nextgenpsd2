@@ -80,6 +80,48 @@ public class CommonConstants {
     public static final String CREDITOR_AGENT_TITLE = "Creditor Agent: ";
     public static final String PAYMENT_TITLE = "Payment ";
     public static final String DEFAULT_PERMISSION = "n/a";
+    public static final String ACTIVE = "active";
+
+    // Keys of the data request context the accelerator sends to the validate-consent-access endpoint
+    public static final String HEADERS_KEY = "headers";
+    public static final String RESOURCE_PARAMS_KEY = "resourceParams";
+    public static final String RESOURCE_KEY = "resource";
+    public static final String HTTP_METHOD_KEY = "httpMethod";
+    public static final String CONTEXT_KEY = "context";
+    public static final String CLIENT_ID_KEY = "clientId";
+    public static final String USER_ID_KEY = "userId";
+    public static final String ELECTED_RESOURCE_KEY = "electedResource";
+
+    public static final String CONSENT_ID_HEADER = "consent-id";
+    public static final String CONSENT_ID_PROPER_CASE_HEADER = "Consent-ID";
+    public static final String SUPER_TENANT_DOMAIN = "@carbon.super";
+    public static final String CARD_ACCOUNTS = "card-accounts";
+    public static final String WITH_BALANCE = "withBalance";
+
+    // First path element of a data request, used to recognise the service the request belongs to
+    public static final String ACCOUNTS_SUBMISSION_PATH_IDENTIFIER = "accounts";
+    public static final String CARD_ACCOUNTS_SUBMISSION_PATH_IDENTIFIER = "card-accounts";
+    public static final String FUNDS_CONFIRMATIONS_SUBMISSION_PATH_IDENTIFIER = "funds-confirmations";
+    public static final String PAYMENTS_RETRIEVAL_PATH_IDENTIFIER = "payments";
+    public static final String BULK_PAYMENTS_RETRIEVAL_PATH_IDENTIFIER = "bulk-payments";
+    public static final String PERIODIC_PAYMENTS_RETRIEVAL_PATH_IDENTIFIER = "periodic-payments";
+
+    public static final List<String> BULK_ACCOUNT_ACCESS_METHODS_REGEX_LIST = Collections
+            .unmodifiableList(Arrays.asList(
+            "/accounts",
+            "/accounts\\?withBalance",
+            "/card-accounts"));
+    public static final List<String> SINGLE_ACCOUNT_ACCESS_METHODS_REGEX_LIST = Collections
+            .unmodifiableList(Arrays.asList(
+            "/accounts/[^/?]*",
+            "/accounts/[^/?]*\\?withBalance",
+            "/accounts/[^/?]*/balances",
+            "/accounts/[^/?]*/transactions",
+            "/accounts/[^/?]*/transactions\\?withBalance",
+            "/accounts/[^/?]*/transactions/[^/?]*",
+            "/card-accounts/[^/?]*",
+            "/card-accounts/[^/?]*/balances",
+            "/card-accounts/[^/?]*/transactions"));
     // Original proper case header constants
     public static final String LOCATION_HEADER = "Location";
     public static final String X_REQUEST_ID_PROPER_CASE_HEADER = "X-Request-ID";
@@ -143,6 +185,32 @@ public class CommonConstants {
                     "Monthly", "EveryTwoMonths", "Quarterly",
                     "SemiAnnual", "Annual", "MonthlyVariable"
             ));
+
+    // Payload element formats defined by the Berlin Group NextGenPSD2 XS2A Framework 1.3.6 PIS specification
+    public static final String CURRENCY_CODE_PATTERN = "[A-Z]{3}";
+    public static final String AMOUNT_VALUE_PATTERN = "^-?([0-9]{1,14})(\\.[0-9]{1,3})?$";
+    public static final String IBAN_PATTERN = "[A-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}";
+    public static final String BBAN_PATTERN = "[a-zA-Z0-9]{1,30}";
+    public static final String BICFI_PATTERN = "[A-Z]{6,6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3,3}){0,1}";
+    public static final String COUNTRY_CODE_PATTERN = "[A-Z]{2}";
+    public static final String DATE_TIME_PATTERN =
+            "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([Zz]|[+-]\\d{2}:\\d{2})$";
+    public static final int MAX_CREDITOR_NAME_LENGTH = 70;
+    public static final int MAX_CREDITOR_AGENT_NAME_LENGTH = 70;
+    public static final int MAX_STREET_NAME_LENGTH = 70;
+    public static final int MAX_END_TO_END_IDENTIFICATION_LENGTH = 35;
+    public static final int MAX_REMITTANCE_INFO_UNSTRUCTURED_LENGTH = 140;
+    public static final int MAX_PAN_LENGTH = 35;
+    public static final int MAX_MASKED_PAN_LENGTH = 35;
+    public static final int MAX_MSISDN_LENGTH = 35;
+
+    public static final String REQUESTED_EXECUTION_DATE = "requestedExecutionDate";
+    public static final String REQUESTED_EXECUTION_TIME = "requestedExecutionTime";
+
+    // Elements that a bulk payment entry must not carry, as per the bulk entry definition in the PIS specification
+    public static final List<String> FORBIDDEN_BULK_ENTRY_ELEMENTS = Collections.unmodifiableList(Arrays.asList(
+            DEBTOR_ACCOUNT, REQUESTED_EXECUTION_DATE, REQUESTED_EXECUTION_TIME
+    ));
     // Payment services
     public static final String PAYMENTS = "payments";
     public static final String BULK_PAYMENTS = "bulk-payments";
