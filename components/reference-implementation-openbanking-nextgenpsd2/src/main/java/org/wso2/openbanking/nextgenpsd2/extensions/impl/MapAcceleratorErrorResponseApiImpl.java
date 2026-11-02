@@ -35,6 +35,6 @@ public class MapAcceleratorErrorResponseApiImpl {
      */
     public static Response constructErrorResponse(ErrorMapperRequestBody errorMapperRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

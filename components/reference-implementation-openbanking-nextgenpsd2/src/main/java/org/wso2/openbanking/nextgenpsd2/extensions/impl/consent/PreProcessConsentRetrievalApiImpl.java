@@ -20,13 +20,13 @@ package org.wso2.openbanking.nextgenpsd2.extensions.impl.consent;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.json.JSONObject;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentRequestBody;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseForResponseAlternation;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -45,28 +45,41 @@ public class PreProcessConsentRetrievalApiImpl {
      */
     public static Response handlePreProcessConsentRetrieval(PreProcessConsentRequestBody requestBody) {
         String requestId = requestBody.getRequestId();
+
+        // Echoed back on error responses. Remains null until the X-Request-ID header is known to be valid.
+        String xRequestId = null;
+
         try {
             // Validate X-request-ID header
             CommonConsentValidationUtil.validateRequestIdentificationHeader(requestBody.getData().getRequestHeaders());
+            xRequestId = CommonConsentValidationUtil.getXRequestId(requestBody.getData().getRequestHeaders());
 
-            // Get validation response for consent retrieval based on consent type
-            ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
-                    .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
-
-            SuccessResponseForResponseAlternation validationResponse = consentInitiationHandler
-                    .handleRetrieval(requestBody);
-
-            return Response.ok().entity(new JSONObject(validationResponse).toString()).build();
+            return ExtensionResponseUtil.buildSuccessResponse(retrieveConsent(requestBody));
 
         } catch (ValidationFailureException e) {
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("[%s] Validation failed for consent retrieval. Returning failed response.",
-                        requestId), e);
-            }
-            return Response.ok().entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] Validation failed for consent retrieval. Returning failed response.",
+                            requestId), e, Response.Status.OK, e.toJsonString(), xRequestId);
         }  catch (ExtensionException e) {
-            log.error(String.format("[%s] An error occurred retrieving consent.", requestId), e);
-            return Response.status(e.getStatus()).entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] An error occurred retrieving consent.", requestId), e, e.getStatus(),
+                    e.toJsonString(), xRequestId);
         }
+    }
+
+    /**
+     * Retrieves the consent using the initiation handler matching the consent type of the request.
+     *
+     * @param requestBody request body from pre-process consent retrieval request
+     * @return consent retrieval response produced by the handler
+     * @throws ExtensionException         if the consent cannot be retrieved
+     * @throws ValidationFailureException if the request does not map to a supported consent type
+     */
+    private static SuccessResponseForResponseAlternation retrieveConsent(PreProcessConsentRequestBody requestBody)
+            throws ExtensionException, ValidationFailureException {
+        ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
+                .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
+
+        return consentInitiationHandler.handleRetrieval(requestBody);
     }
 }

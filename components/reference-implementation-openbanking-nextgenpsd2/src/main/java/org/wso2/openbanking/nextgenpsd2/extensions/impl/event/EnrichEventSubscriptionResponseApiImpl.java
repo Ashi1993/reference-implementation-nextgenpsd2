@@ -35,6 +35,6 @@ public class EnrichEventSubscriptionResponseApiImpl {
      */
     public static Response handleEnrichEventSubscription(EventSubscriptionRequestBody eventSubscriptionRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

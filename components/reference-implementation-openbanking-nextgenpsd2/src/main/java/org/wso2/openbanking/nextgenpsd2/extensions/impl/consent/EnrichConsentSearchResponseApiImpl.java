@@ -36,6 +36,6 @@ public class EnrichConsentSearchResponseApiImpl {
     public static Response handleEnrichConsentSearchResponse(
             EnrichConsentSearchRequestBody enrichConsentSearchRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

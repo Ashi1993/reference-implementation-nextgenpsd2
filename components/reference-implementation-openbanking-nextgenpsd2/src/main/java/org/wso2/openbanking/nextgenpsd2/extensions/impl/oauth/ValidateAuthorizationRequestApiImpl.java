@@ -36,6 +36,6 @@ public class ValidateAuthorizationRequestApiImpl {
     public static Response handleValidateAuthorizationRequest(
             ValidateAuthorizationRequestBody validateAuthorizationRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

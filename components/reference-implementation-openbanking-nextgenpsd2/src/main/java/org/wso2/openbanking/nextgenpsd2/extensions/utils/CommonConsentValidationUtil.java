@@ -60,8 +60,6 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredBasicCons
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseConsentRevocation;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseConsentRevocationData;
-import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePersistAuthorizedConsent;
-import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePopulateConsentAuthorizeScreen;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePopulateConsentAuthorizeScreenData;
 
 import java.time.LocalDate;
@@ -680,6 +678,18 @@ public class CommonConsentValidationUtil {
     }
 
     /**
+     * Reads the X-Request-ID header from the request headers sent by the accelerator.
+     *
+     * @param headers request headers of the request
+     * @return value of the X-Request-ID header, or an empty string if it is absent
+     * @throws ExtensionException if the request headers cannot be read as JSON
+     */
+    public static String getXRequestId(Object headers) throws ExtensionException {
+
+        return convertObjectToJson(headers).optString(CommonConstants.X_REQUEST_ID_HEADER);
+    }
+
+    /**
      * Validates the PSU-IP-Address request header.
      *
      * @param headers request headers
@@ -1206,36 +1216,21 @@ public class CommonConsentValidationUtil {
     }
 
     /**
-     * Properly builds response for populate consent authorize screen endpoint.
+     * Serializes a built response object to JSON using the configured object mapper.
+     * <p>
+     * Response models carrying Jackson annotations must be serialized through this method rather than
+     * through {@link JSONObject}, since only the object mapper honours those annotations.
      *
      * @param response built response object for the endpoint
-     * @return endpoint response
-     * @throws ExtensionException if response building failed
+     * @return the response object serialized to a JSON string
+     * @throws ExtensionException if the response object cannot be serialized
      */
-    public static Response buildPopulateResponseFromObject(SuccessResponsePopulateConsentAuthorizeScreen response)
-            throws ExtensionException {
+    public static String serializeToJsonString(Object response) throws ExtensionException {
         try {
-            return Response.ok().entity(objectMapper.writeValueAsString(response)).build();
+            return objectMapper.writeValueAsString(response);
         } catch (JsonProcessingException e) {
             throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR, "server_error",
-                    "Failed to parse built populate response object to JSON.");
-        }
-    }
-
-    /**
-     * Properly builds response for persist authorized consent endpoint.
-     *
-     * @param response built response object for the endpoint
-     * @return endpoint response
-     * @throws ExtensionException if response building failed
-     */
-    public static Response buildPersistResponseFromObject(SuccessResponsePersistAuthorizedConsent response)
-            throws ExtensionException {
-        try {
-            return Response.ok().entity(objectMapper.writeValueAsString(response)).build();
-        } catch (JsonProcessingException e) {
-            throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR, "server_error",
-                    "Failed to parse built persist response object to JSON.");
+                    "Failed to parse built response object to JSON.");
         }
     }
 }

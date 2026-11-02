@@ -36,6 +36,6 @@ public class PreProcessConsentFileUploadApiImpl {
     public static Response handlePreProcessConsentFileUpload(
             PreProcessFileUploadRequestBody preProcessFileUploadRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

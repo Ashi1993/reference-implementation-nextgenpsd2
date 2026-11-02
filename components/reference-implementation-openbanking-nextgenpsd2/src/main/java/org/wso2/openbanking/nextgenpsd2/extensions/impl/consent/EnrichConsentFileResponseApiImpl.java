@@ -36,6 +36,6 @@ public class EnrichConsentFileResponseApiImpl {
     public static Response handleEnrichConsentFileResponse(
             EnrichFileUploadResponseRequestBody enrichFileUploadResponseRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

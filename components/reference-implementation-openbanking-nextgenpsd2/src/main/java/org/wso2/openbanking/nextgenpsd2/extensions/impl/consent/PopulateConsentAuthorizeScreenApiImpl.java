@@ -34,6 +34,7 @@ import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidation
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentAuthorizationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -72,41 +73,64 @@ public class PopulateConsentAuthorizeScreenApiImpl {
             ConsentAuthorizationHandler authorizationHandler = CommonConsentValidationUtil.getAuthorizationHandler(
                     consentResource.getType());
 
-            if (authorizationHandler != null) {
-                SuccessResponsePopulateConsentAuthorizeScreen response =
-                        new SuccessResponsePopulateConsentAuthorizeScreen();
-                SuccessResponsePopulateConsentAuthorizeScreenData responseData =
-                        new SuccessResponsePopulateConsentAuthorizeScreenData();
-
-                // Add basic consent data to display
-                authorizationHandler.populateBasicConsentData(responseData, data);
-
-                // Add account data to display
-                authorizationHandler.populateAccountsData(responseData, data);
-
-                // Append authorizable consent as consent metadata
-                CommonConsentValidationUtil.appendAuthorizationToResponse(responseData, unauthorizedObj);
-
-                // Set response data to response
-                response.setResponseId(requestBody.getRequestId());
-                response.setStatus(SuccessResponsePopulateConsentAuthorizeScreen.StatusEnum.SUCCESS);
-                response.setData(responseData);
-
-                return CommonConsentValidationUtil.buildPopulateResponseFromObject(response);
-            } else {
+            if (authorizationHandler == null) {
                 // Should be unreachable since only consent types in ConsentTypes enum are used at initiation
-                return Response.status(Response.Status.BAD_REQUEST).entity(
+                return ExtensionResponseUtil.buildErrorResponse(log,
+                        String.format("[%s] %s", requestId, ErrorConstants.INITIATED_CONSENT_TYPE_INVALID), null,
+                        Response.Status.BAD_REQUEST,
                         ErrorUtil.getFormattedAuthorizationFailureException(requestId,
-                                ErrorConstants.INITIATED_CONSENT_TYPE_INVALID, null).toString()).build();
+                                ErrorConstants.INITIATED_CONSENT_TYPE_INVALID, null).toString(), null);
             }
+
+            return ExtensionResponseUtil.buildSerializedSuccessResponse(
+                    buildAuthorizeScreenResponse(requestId, data, authorizationHandler, unauthorizedObj));
+
         } catch (AuthorizationFailureException e) {
-            log.error(String.format("[%s] Authorization retrieval failed. Redirecting to redirect URL with " +
-                    "error description", requestId), e);
+            // The failure is carried back to the PSU through the redirect URL, thus returned with an OK status
             e.setResponseId(requestId);
-            return Response.status(Response.Status.OK).entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] Authorization retrieval failed. Redirecting to redirect URL with error "
+                            + "description", requestId), e, Response.Status.OK, e.toJsonString(), null);
         } catch (ExtensionException e) {
-            log.error(String.format("[%s] An error occurred populating consent authorize screen.", requestId), e);
-            return Response.status(e.getStatus()).entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] An error occurred populating consent authorize screen.", requestId), e,
+                    e.getStatus(), e.toJsonString(), null);
         }
+    }
+
+    /**
+     * Builds the payload the custom consent authorization page is generated from.
+     *
+     * @param requestId            request identifier echoed back as the response identifier
+     * @param data                 data of the populate consent authorize screen request
+     * @param authorizationHandler authorization handler matching the consent type of the request
+     * @param unauthorizedObj      the authorization awaiting the user decision
+     * @return success response for populating the consent authorize screen
+     * @throws ExtensionException            if the consent data to display cannot be built
+     * @throws AuthorizationFailureException if the consent cannot be presented for authorization
+     */
+    private static SuccessResponsePopulateConsentAuthorizeScreen buildAuthorizeScreenResponse(
+            String requestId, PopulateConsentAuthorizeScreenData data,
+            ConsentAuthorizationHandler authorizationHandler, StoredAuthorization unauthorizedObj)
+            throws ExtensionException, AuthorizationFailureException {
+        SuccessResponsePopulateConsentAuthorizeScreenData responseData =
+                new SuccessResponsePopulateConsentAuthorizeScreenData();
+
+        // Add basic consent data to display
+        authorizationHandler.populateBasicConsentData(responseData, data);
+
+        // Add account data to display
+        authorizationHandler.populateAccountsData(responseData, data);
+
+        // Append authorizable consent as consent metadata
+        CommonConsentValidationUtil.appendAuthorizationToResponse(responseData, unauthorizedObj);
+
+        SuccessResponsePopulateConsentAuthorizeScreen response =
+                new SuccessResponsePopulateConsentAuthorizeScreen();
+        response.setResponseId(requestId);
+        response.setStatus(SuccessResponsePopulateConsentAuthorizeScreen.StatusEnum.SUCCESS);
+        response.setData(responseData);
+
+        return response;
     }
 }

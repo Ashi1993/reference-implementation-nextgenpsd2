@@ -36,6 +36,6 @@ public class ValidateConsentFileRetrievalApiImpl {
     public static Response handleValidateConsentFileRetrieval(
             PreProcessConsentRequestBody preProcessConsentRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

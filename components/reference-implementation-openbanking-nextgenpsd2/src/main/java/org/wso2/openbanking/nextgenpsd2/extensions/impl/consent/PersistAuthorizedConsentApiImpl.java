@@ -32,6 +32,7 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponse
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePersistAuthorizedConsentData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.UserGrantedData;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.PaymentConsentUtil;
 
 import javax.ws.rs.core.Response;
@@ -49,53 +50,76 @@ public class PersistAuthorizedConsentApiImpl {
      * @param requestBody request made to persist-authorized-consent endpoint
      * @return response containing any modified consent information and account mappings with permissions
      */
-    public static Response handlePersistAuthorizedConsent(PersistAuthorizedConsentRequestBody
-                                                            requestBody) {
+    public static Response handlePersistAuthorizedConsent(PersistAuthorizedConsentRequestBody requestBody) {
         String requestId = requestBody.getRequestId();
         PersistAuthorizedConsent persistData = requestBody.getData();
-        boolean isApproved = persistData.getIsApproved();
-        UserGrantedData userGrantedData = persistData.getUserGrantedData();
         StoredDetailedConsentResourceData consentResource = persistData.getConsentResource();
-        String consentType = consentResource.getType();
 
         try {
-            JSONObject retrievalMetadata = CommonConsentValidationUtil
-                    .convertObjectToJson(userGrantedData.getAuthorizedResources().getMetadata());
-
-            // Restore authorizing authorization
-            StoredAuthorization authorizingResource = CommonConsentValidationUtil
-                    .extractAuthorizingResource(retrievalMetadata);
+            StoredAuthorization authorizingResource = extractAuthorizingResource(persistData);
 
             // Banking backend integration for payments
-            if (isApproved) {
+            if (persistData.getIsApproved()) {
                 PaymentConsentUtil.handleBackendPayment(authorizingResource, consentResource);
             }
 
-            // Build success response for consent persistence
-            SuccessResponsePersistAuthorizedConsent response = new SuccessResponsePersistAuthorizedConsent();
-            response.setResponseId(requestId);
-            response.setStatus(SuccessResponsePersistAuthorizedConsent.StatusEnum.SUCCESS);
-            SuccessResponsePersistAuthorizedConsentData responseData =
-                    new SuccessResponsePersistAuthorizedConsentData();
-
-            ConsentAuthorizationHandler authorizationHandler =
-                    CommonConsentValidationUtil.getAuthorizationHandler(consentType);
-
-            responseData.setConsentResource(authorizationHandler.getAmendedConsentResource(requestBody,
-                    authorizingResource));
-
-            response.setData(responseData);
-
-            return CommonConsentValidationUtil.buildPersistResponseFromObject(response);
+            return ExtensionResponseUtil.buildSerializedSuccessResponse(
+                    buildPersistedConsentResponse(requestBody, authorizingResource));
 
         } catch (AuthorizationFailureException e) {
-            log.error(String.format("[%s] Authorization persistence failed. Redirecting to redirect URL with " +
-                    "error description", requestId), e);
+            // The failure is carried back to the PSU through the redirect URL, thus returned with an OK status
             e.setResponseId(requestId);
-            return Response.status(Response.Status.OK).entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] Authorization persistence failed. Redirecting to redirect URL with error "
+                            + "description", requestId), e, Response.Status.OK, e.toJsonString(), null);
         } catch (ExtensionException e) {
-            log.error(String.format("[%s] An error occurred persisting authorized consent.", requestId), e);
-            return Response.status(e.getStatus()).entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] An error occurred persisting authorized consent.", requestId), e,
+                    e.getStatus(), e.toJsonString(), null);
         }
+    }
+
+    /**
+     * Restores the authorization being authorized from the metadata carried by the user granted data.
+     *
+     * @param persistData data of the persist authorized consent request
+     * @return the authorization the user is authorizing
+     * @throws ExtensionException if the metadata cannot be read as JSON or carries no authorizing authorization
+     */
+    private static StoredAuthorization extractAuthorizingResource(PersistAuthorizedConsent persistData)
+            throws ExtensionException {
+        UserGrantedData userGrantedData = persistData.getUserGrantedData();
+        JSONObject retrievalMetadata = CommonConsentValidationUtil
+                .convertObjectToJson(userGrantedData.getAuthorizedResources().getMetadata());
+
+        return CommonConsentValidationUtil.extractAuthorizingResource(retrievalMetadata);
+    }
+
+    /**
+     * Builds the success response carrying the consent resource as amended by the authorization handler.
+     *
+     * @param requestBody         request made to persist-authorized-consent endpoint
+     * @param authorizingResource the authorization the user is authorizing
+     * @return success response for consent persistence
+     * @throws ExtensionException            if the amended consent resource cannot be built
+     * @throws AuthorizationFailureException if the consent cannot be amended for the authorization
+     */
+    private static SuccessResponsePersistAuthorizedConsent buildPersistedConsentResponse(
+            PersistAuthorizedConsentRequestBody requestBody, StoredAuthorization authorizingResource)
+            throws ExtensionException, AuthorizationFailureException {
+        String consentType = requestBody.getData().getConsentResource().getType();
+        ConsentAuthorizationHandler authorizationHandler =
+                CommonConsentValidationUtil.getAuthorizationHandler(consentType);
+
+        SuccessResponsePersistAuthorizedConsentData responseData = new SuccessResponsePersistAuthorizedConsentData();
+        responseData.setConsentResource(authorizationHandler.getAmendedConsentResource(requestBody,
+                authorizingResource));
+
+        SuccessResponsePersistAuthorizedConsent response = new SuccessResponsePersistAuthorizedConsent();
+        response.setResponseId(requestBody.getRequestId());
+        response.setStatus(SuccessResponsePersistAuthorizedConsent.StatusEnum.SUCCESS);
+        response.setData(responseData);
+
+        return response;
     }
 }

@@ -20,14 +20,13 @@ package org.wso2.openbanking.nextgenpsd2.extensions.impl.consent;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.json.JSONObject;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentCreationRequestBody;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePreProcessConsentCreation;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
-import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -46,40 +45,46 @@ public class PreProcessConsentCreationApiImpl {
      */
     public static Response handlePreProcessConsentCreation(PreProcessConsentCreationRequestBody requestBody) {
         String requestId = requestBody.getRequestId();
+
+        // Echoed back on error responses. Remains null until the X-Request-ID header is known to be valid.
         String xRequestId = null;
 
         try {
             // Validate X-request-ID header
             // Enable forwarding of the specific header in accelerator configurations
             CommonConsentValidationUtil.validateRequestIdentificationHeader(requestBody.getData().getRequestHeaders());
-
-            JSONObject headersJSON = CommonConsentValidationUtil.convertObjectToJson(requestBody.getData()
-                    .getRequestHeaders());
-            xRequestId = headersJSON.optString(CommonConstants.X_REQUEST_ID_HEADER);
+            xRequestId = CommonConsentValidationUtil.getXRequestId(requestBody.getData().getRequestHeaders());
 
             // Validate consent initiation data format
             CommonConsentValidationUtil.validatePayloadFormat(requestBody);
 
-            // Get validation response for consent creation based on consent type
-            ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
-                    .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
-
-            SuccessResponsePreProcessConsentCreation validationResponse = consentInitiationHandler
-                    .handleCreation(requestBody);
-
-            return Response.ok().entity(new JSONObject(validationResponse).toString()).build();
+            return ExtensionResponseUtil.buildSuccessResponse(validateAndCreateConsent(requestBody));
 
         } catch (ValidationFailureException e) {
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("[%s] Validation failed for consent creation. Returning failed response.",
-                        requestId), e);
-            }
-            return Response.ok().entity(e.toJsonString())
-                    .header(CommonConstants.X_REQUEST_ID_PROPER_CASE_HEADER, xRequestId).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] Validation failed for consent creation. Returning failed response.",
+                            requestId), e, Response.Status.OK, e.toJsonString(), xRequestId);
         }  catch (ExtensionException e) {
-            log.error(String.format("[%s] An error occurred creating consent.", requestId), e);
-            return Response.status(e.getStatus()).entity(e.toJsonString())
-                    .header(CommonConstants.X_REQUEST_ID_PROPER_CASE_HEADER, xRequestId).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] An error occurred creating consent.", requestId), e, e.getStatus(),
+                    e.toJsonString(), xRequestId);
         }
+    }
+
+    /**
+     * Validated the consent pau;load and creates the consent using the initiation handler matching the consent type of the request.
+     *
+     * @param requestBody request body from pre-process consent creation request
+     * @return consent creation response produced by the handler
+     * @throws ExtensionException         if the consent cannot be created
+     * @throws ValidationFailureException if the request does not map to a supported consent type
+     */
+    private static SuccessResponsePreProcessConsentCreation validateAndCreateConsent(
+            PreProcessConsentCreationRequestBody requestBody) throws ExtensionException, ValidationFailureException {
+
+        ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
+                .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
+
+        return consentInitiationHandler.handleCreation(requestBody);
     }
 }

@@ -35,6 +35,6 @@ public class ValidateEventCreationApiImpl {
      */
     public static Response handleEventCreationValidation(EventCreationRequestBody eventCreationRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

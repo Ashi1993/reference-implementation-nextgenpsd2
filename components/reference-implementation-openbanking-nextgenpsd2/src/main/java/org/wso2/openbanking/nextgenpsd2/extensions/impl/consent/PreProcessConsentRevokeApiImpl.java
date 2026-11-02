@@ -20,13 +20,13 @@ package org.wso2.openbanking.nextgenpsd2.extensions.impl.consent;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.json.JSONObject;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentRequestBody;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseConsentRevocation;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -45,29 +45,42 @@ public class PreProcessConsentRevokeApiImpl {
      */
     public static Response handlePreProcessConsentRevoke(PreProcessConsentRequestBody requestBody) {
         String requestId = requestBody.getRequestId();
+
+        // Echoed back on error responses. Remains null until the X-Request-ID header is known to be valid.
+        String xRequestId = null;
+
         try {
             // Validate X-request-ID header
             // Enable forwarding of the specific header in accelerator configurations
             CommonConsentValidationUtil.validateRequestIdentificationHeader(requestBody.getData().getRequestHeaders());
+            xRequestId = CommonConsentValidationUtil.getXRequestId(requestBody.getData().getRequestHeaders());
 
-            // Get validation response for consent revocation based on consent type
-            ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
-                    .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
-
-            SuccessResponseConsentRevocation validationResponse = consentInitiationHandler
-                    .handleRevocation(requestBody);
-
-            return Response.ok().entity(new JSONObject(validationResponse).toString()).build();
+            return ExtensionResponseUtil.buildSuccessResponse(revokeConsent(requestBody));
 
         } catch (ValidationFailureException e) {
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("[%s] Validation failed for consent revocation. Returning failed response.",
-                        requestId), e);
-            }
-            return Response.ok().entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] Validation failed for consent revocation. Returning failed response.",
+                            requestId), e, Response.Status.OK, e.toJsonString(), xRequestId);
         }  catch (ExtensionException e) {
-            log.error(String.format("[%s] An error occurred revoking consent.", requestId), e);
-            return Response.status(e.getStatus()).entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] An error occurred revoking consent.", requestId), e, e.getStatus(),
+                    e.toJsonString(), xRequestId);
         }
+    }
+
+    /**
+     * Revokes the consent using the initiation handler matching the consent type of the request.
+     *
+     * @param requestBody request body from pre-process consent revocation request
+     * @return consent revocation response produced by the handler
+     * @throws ExtensionException         if the consent cannot be revoked
+     * @throws ValidationFailureException if the request does not map to a supported consent type
+     */
+    private static SuccessResponseConsentRevocation revokeConsent(PreProcessConsentRequestBody requestBody)
+            throws ExtensionException, ValidationFailureException {
+        ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
+                .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
+
+        return consentInitiationHandler.handleRevocation(requestBody);
     }
 }

@@ -35,6 +35,6 @@ public class EnrichEventPollingResponseApiImpl {
      */
     public static Response handleEnrichEventPolling(EventPollingRequestBody eventPollingRequestBody) {
 
-        return Response.status(501).build();
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

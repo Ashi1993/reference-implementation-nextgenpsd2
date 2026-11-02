@@ -28,7 +28,9 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.common.SuccessResponse;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.ValidateConsentAccessRequestBody;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -49,42 +51,72 @@ public class ValidateConsentAccessApiImpl {
             ValidateConsentAccessRequestBody validateConsentAccessRequestBody) {
 
         String requestId = validateConsentAccessRequestBody.getRequestId();
+
+        ConsentAccessContext context = new ConsentAccessContext(
+                validateConsentAccessRequestBody.getData().getAdditionalProperties());
+
+        // Echoed back on error responses when the accelerator sends the request headers
+        String xRequestId = context.getHeader(CommonConstants.X_REQUEST_ID_PROPER_CASE_HEADER);
+
         try {
-            StoredDetailedConsentResourceData consentResource =
-                    validateConsentAccessRequestBody.getData().getConsentResource();
+            validateConsentAccess(requestId, validateConsentAccessRequestBody, context);
 
-            ConsentAccessContext context = new ConsentAccessContext(
-                    validateConsentAccessRequestBody.getData().getAdditionalProperties());
-
-            // Validate the headers and the token the data access request was made with
-            ConsentValidationUtil.validateDataRequestContext(requestId, consentResource, context);
-
-            // Validate that the request path belongs to the service the consent was initiated under
-            if (context.hasResourcePath()) {
-                ConsentValidationUtil.validateResourcePathAgainstConsentType(consentResource.getType(),
-                        context.getResourcePath());
-            }
-
-            ConsentValidationHandler consentValidationHandler = CommonConsentValidationUtil
-                    .getConsentValidationHandler(consentResource.getType());
-
-            consentValidationHandler.validateConsentAccess(validateConsentAccessRequestBody, context);
-
-            SuccessResponse successResponse = new SuccessResponse();
-            successResponse.setResponseId(requestId);
-            successResponse.setStatus(SuccessResponse.StatusEnum.SUCCESS);
-
-            return Response.ok().entity(successResponse).build();
+            return buildSuccessResponse(requestId);
 
         } catch (ValidationFailureException e) {
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("[%s] Validation failed for consent access. Returning failed response.",
-                        requestId), e);
-            }
-            return Response.ok().entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] Validation failed for consent access. Returning failed response.", requestId),
+                    e, Response.Status.OK, e.toJsonString(), xRequestId);
         } catch (ExtensionException e) {
-            log.error(String.format("[%s] An error occurred validating consent access.", requestId), e);
-            return Response.status(e.getStatus()).entity(e.toJsonString()).build();
+            return ExtensionResponseUtil.buildErrorResponse(log,
+                    String.format("[%s] An error occurred validating consent access.", requestId), e, e.getStatus(),
+                    e.toJsonString(), xRequestId);
         }
+    }
+
+    /**
+     * Validates that the data access request is allowed under the stored consent.
+     *
+     * @param requestId                        request identifier used for logging
+     * @param validateConsentAccessRequestBody the ValidateConsentAccessApi request body
+     * @param context                          context of the data access request
+     * @throws ExtensionException         if the consent access cannot be validated
+     * @throws ValidationFailureException if the data access request is not allowed under the consent
+     */
+    private static void validateConsentAccess(String requestId,
+                                              ValidateConsentAccessRequestBody validateConsentAccessRequestBody,
+                                              ConsentAccessContext context)
+            throws ExtensionException, ValidationFailureException {
+        StoredDetailedConsentResourceData consentResource =
+                validateConsentAccessRequestBody.getData().getConsentResource();
+
+        // Validate the headers and the token the data access request was made with
+        ConsentValidationUtil.validateDataRequestContext(requestId, consentResource, context);
+
+        // Validate that the request path belongs to the service the consent was initiated under
+        if (context.hasResourcePath()) {
+            ConsentValidationUtil.validateResourcePathAgainstConsentType(consentResource.getType(),
+                    context.getResourcePath());
+        }
+
+        // Apply the consent type specific access rules
+        ConsentValidationHandler consentValidationHandler = CommonConsentValidationUtil
+                .getConsentValidationHandler(consentResource.getType());
+
+        consentValidationHandler.validateConsentAccess(validateConsentAccessRequestBody, context);
+    }
+
+    /**
+     * Builds the response returned when the consent access is validated successfully.
+     *
+     * @param requestId request identifier echoed back as the response identifier
+     * @return built success response
+     */
+    private static Response buildSuccessResponse(String requestId) {
+        SuccessResponse successResponse = new SuccessResponse();
+        successResponse.setResponseId(requestId);
+        successResponse.setStatus(SuccessResponse.StatusEnum.SUCCESS);
+
+        return Response.ok().entity(successResponse).build();
     }
 }

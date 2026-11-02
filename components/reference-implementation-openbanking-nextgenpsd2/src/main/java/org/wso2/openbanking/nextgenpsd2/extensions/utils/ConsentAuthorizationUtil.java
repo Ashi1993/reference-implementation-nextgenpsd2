@@ -50,7 +50,7 @@ import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -361,18 +361,31 @@ public class ConsentAuthorizationUtil {
     public static boolean areAllOtherAuthResourcesValid(StoredAuthorization authorizingResource,
                                                         List<StoredAuthorization> allAuthorizations) {
         //ToDo: Make sure in explicit consent authorization that only one authorization can be created per user
-        //Remove current authorization resource from the list
-        allAuthorizations.removeIf(resource
-                -> (StringUtils.equals(resource.getId(), authorizingResource.getId())
-                || !StringUtils.equals(resource.getType(), authorizingResource.getType())));
+        // The authorizations of the consent are read, never modified, since the caller keeps using the list
+        // after this check, most notably to calculate the aggregated consent status.
+        return getOtherAuthorizationsOfSameType(authorizingResource, allAuthorizations).stream()
+                .allMatch(authorisation -> StringUtils.equals(authorisation.getStatus(),
+                        ExtensionEnums.ScaStatusEnum.PSU_AUTHENTICATED.toString()));
+    }
 
-        if (allAuthorizations.isEmpty()) {
-            return true;
-        } else {
-            return allAuthorizations.stream().allMatch(authorisation
-                    -> StringUtils.equals(authorisation.getStatus(),
-                    ExtensionEnums.ScaStatusEnum.PSU_AUTHENTICATED.toString()));
+    /**
+     * Returns the authorizations of the consent other than the one being authorized, leaving out those of a
+     * different type, since an authorisation and a cancellation of the same consent are authorized separately.
+     *
+     * @param authorizingResource authorization resource being authorized
+     * @param allAuthorizations   all the authorizations associated with this consent
+     * @return the other authorizations of the same type, which is empty when there are none
+     */
+    private static List<StoredAuthorization> getOtherAuthorizationsOfSameType(
+            StoredAuthorization authorizingResource, List<StoredAuthorization> allAuthorizations) {
+        if (allAuthorizations == null) {
+            return Collections.emptyList();
         }
+
+        return allAuthorizations.stream()
+                .filter(resource -> !StringUtils.equals(resource.getId(), authorizingResource.getId())
+                        && StringUtils.equals(resource.getType(), authorizingResource.getType()))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -431,56 +444,46 @@ public class ConsentAuthorizationUtil {
     }
 
     /**
-     * Calculates aggregate consent status based on status of all authorization resources.
+     * Calculates the aggregated consent status from the status of all authorization resources of the consent.
+     * <p>
+     * This is called while the PSU approval of the authorizing resource is being persisted, so that resource is
+     * counted as passed rather than by the status it still carries in the request. The consent therefore reaches
+     * its final status only once every other authorization of the same type has been finalised, and is rejected
+     * as soon as one of them has failed.
      *
      * @param storedAuthorizations authorization resources sent with the request
      * @param authorizingResource resource being authorized by the SCA
+     * @param isTransaction whether the consent is a payment, which carries a transaction status
      * @return new consent status based on authorization status of all authorization objects
      */
-    public static Optional<String> getAggregatedConsentStatus(List<StoredAuthorization> storedAuthorizations,
-                                                                         StoredAuthorization authorizingResource,
-                                                                         boolean isTransaction) {
+    public static String getAggregatedConsentStatus(List<StoredAuthorization> storedAuthorizations,
+                                                    StoredAuthorization authorizingResource,
+                                                    boolean isTransaction) {
 
-        // Have all authorisations passed.
-        boolean hasPassed = storedAuthorizations.stream().allMatch(
-                authorisation -> authorisation.getStatus().equals(
-                        ExtensionEnums.ScaStatusEnum.FINALISED.toString())
-                        || StringUtils.equals(authorisation.getId(), authorizingResource.getId()));
+        List<StoredAuthorization> otherAuthorizations =
+                getOtherAuthorizationsOfSameType(authorizingResource, storedAuthorizations);
 
-        if (hasPassed) {
-            if (isTransaction) {
-                return Optional.of(ExtensionEnums.TransactionStatusEnum.ACCP.name());
-            } else {
-                return Optional.of(ExtensionEnums.ConsentStatusEnum.VALID.toString());
-            }
+        // Have all the other authorisations passed. Holds for a consent authorized by a single PSU.
+        boolean haveAllPassed = otherAuthorizations.stream().allMatch(authorisation -> StringUtils.equals(
+                ExtensionEnums.ScaStatusEnum.FINALISED.toString(), authorisation.getStatus()));
+
+        if (haveAllPassed) {
+            return isTransaction ? ExtensionEnums.TransactionStatusEnum.ACCP.name()
+                    : ExtensionEnums.ConsentStatusEnum.VALID.toString();
         }
 
-        // Has at least one authorisation failed
-        boolean hasFailed = storedAuthorizations.stream().anyMatch(
-                authorisation -> authorisation.getStatus().equals(
-                        ExtensionEnums.ScaStatusEnum.FAILED.toString())
-                        || StringUtils.equals(authorisation.getId(), authorizingResource.getId()));
+        // Has at least one of the other authorisations failed
+        boolean hasAnyFailed = otherAuthorizations.stream().anyMatch(authorisation -> StringUtils.equals(
+                ExtensionEnums.ScaStatusEnum.FAILED.toString(), authorisation.getStatus()));
 
-        if (hasFailed) {
-            if (isTransaction) {
-                return Optional.of(ExtensionEnums.TransactionStatusEnum.RJCT.name());
-            } else {
-                return Optional.of(ExtensionEnums.ConsentStatusEnum.REJECTED.toString());
-            }
+        if (hasAnyFailed) {
+            return isTransaction ? ExtensionEnums.TransactionStatusEnum.RJCT.name()
+                    : ExtensionEnums.ConsentStatusEnum.REJECTED.toString();
         }
 
-        // Has at least a single successful authorisation taken place.
-        boolean partiallyPassed = storedAuthorizations.stream().anyMatch(authorisation ->
-                authorisation.getStatus().equals(ExtensionEnums.ScaStatusEnum.FINALISED.toString()));
-
-        if (partiallyPassed) {
-            if (isTransaction) {
-                return Optional.of(ExtensionEnums.TransactionStatusEnum.PATC.name());
-            } else {
-                return Optional.of(ExtensionEnums.ConsentStatusEnum.PARTIALLY_AUTHORISED.toString());
-            }
-        }
-        return Optional.empty();
+        // The authorization being persisted has passed while others are still awaiting their PSU
+        return isTransaction ? ExtensionEnums.TransactionStatusEnum.PATC.name()
+                : ExtensionEnums.ConsentStatusEnum.PARTIALLY_AUTHORISED.toString();
     }
 
     /**
@@ -508,6 +511,12 @@ public class ConsentAuthorizationUtil {
      */
     public static void verifySingleAuthorizedResource(List<AuthorizedResourcesAuthorizedDataInner> authorizedData)
             throws ExtensionException {
+        if (authorizedData == null || authorizedData.isEmpty()) {
+            log.error("No authorized account retrieved for a consent that requires a single account");
+            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
+                    "No authorized account retrieved for a consent that requires a single account");
+        }
+
         if (authorizedData.size() > 1 || authorizedData.get(0).getAccounts().size() > 1) {
             log.error("Retrieved more than one authorized account for a consent that " +
             "can have only a single account");
@@ -559,21 +568,8 @@ public class ConsentAuthorizationUtil {
             }
 
             // Set aggregate consent status
-            Optional<String> consentStatus = getAggregatedConsentStatus(
-                    requestData.getConsentResource().getAuthorizations(),
-                    authorizingResource,
-                    isTransaction
-            );
-
-            if (consentStatus.isPresent()) {
-                newConsentStatus = consentStatus.get();
-            } else {
-                log.error(String.format(ErrorConstants.INVALID_CONSENT_STATUS_UPDATE,
-                        requestData.getConsentId()));
-                throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request", 
-                        String.format(ErrorConstants.INVALID_CONSENT_STATUS_UPDATE,
-                                requestData.getConsentId()));
-            }
+            newConsentStatus = getAggregatedConsentStatus(requestData.getConsentResource().getAuthorizations(),
+                    authorizingResource, isTransaction);
         }
 
         // Build auth amendments
