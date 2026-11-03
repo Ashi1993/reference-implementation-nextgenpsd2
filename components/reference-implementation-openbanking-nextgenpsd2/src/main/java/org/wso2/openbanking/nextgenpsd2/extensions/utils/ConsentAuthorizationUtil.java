@@ -18,10 +18,6 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.utils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,7 +28,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.AuthorizationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.AccountReference;
@@ -59,11 +55,11 @@ import javax.ws.rs.core.Response;
 /**
  * Utility class for consent authorization.
  */
-public class ConsentAuthorizationUtil {
+public final class ConsentAuthorizationUtil {
+
+    private ConsentAuthorizationUtil() {
+    }
     private static final Log log = LogFactory.getLog(ConsentAuthorizationUtil.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     /**
      * Validates the consent Id with provided consent type in scope string. If not valid, an error is sent to the
@@ -84,21 +80,16 @@ public class ConsentAuthorizationUtil {
 
         if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.ACCOUNTS.toString(), consentType)
                 && !StringUtils.contains(scopeString, CommonConstants.AIS_SCOPE)) {
-            log.error(ErrorConstants.CONSENT_ID_AND_SCOPE_MISMATCH);
             throw new AuthorizationFailureException(ErrorConstants.CONSENT_ID_AND_SCOPE_MISMATCH);
         }
 
-        if ((StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString(), consentType)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString(), consentType)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString(), consentType))
+        if (ExtensionEnums.ConsentTypeEnum.isPaymentType(consentType)
                 && !StringUtils.contains(scopeString, CommonConstants.PIS_SCOPE)) {
-            log.error(ErrorConstants.CONSENT_ID_AND_SCOPE_MISMATCH);
             throw new AuthorizationFailureException(ErrorConstants.CONSENT_ID_AND_SCOPE_MISMATCH);
         }
 
         if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.FUNDS_CONFIRMATION.toString(), consentType)
                 && !StringUtils.contains(scopeString, CommonConstants.PIIS_SCOPE)) {
-            log.error(ErrorConstants.CONSENT_ID_AND_SCOPE_MISMATCH);
             throw new AuthorizationFailureException(ErrorConstants.CONSENT_ID_AND_SCOPE_MISMATCH);
         }
     }
@@ -181,9 +172,7 @@ public class ConsentAuthorizationUtil {
                     || StringUtils.equals(ExtensionEnums.ConsentStatusEnum.PARTIALLY_AUTHORISED.toString(),
                     consentStatus);
 
-        } else if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString(), type)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString(), type)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString(), type)) {
+        } else if (ExtensionEnums.ConsentTypeEnum.isPaymentType(type)) {
             if (StringUtils.equals(ExtensionEnums.AuthTypeEnum.CANCELLATION.toString(), authObj.getType())) {
                 // Ignores consent status
                 isApplicable = true;
@@ -204,9 +193,7 @@ public class ConsentAuthorizationUtil {
         }
 
         if (!isApplicable) {
-            log.error(String.format("[%s] The consent of Id: %s is not in an applicable status for authorization",
-                    requestId, consentResource.getId()));
-            throw new AuthorizationFailureException("The consent is not in an applicable status for authorization");
+            throw new AuthorizationFailureException(ErrorConstants.CONSENT_STATUS_NOT_APPLICABLE);
         }
     }
 
@@ -326,13 +313,8 @@ public class ConsentAuthorizationUtil {
      */
     public static List<Account> getValidatedAccountObjects(List<AccountReference> accountRefList,
                                                     JSONArray accountList) throws ExtensionException {
-        try {
-            JSONArray accountRefArrayJSON = new JSONArray(objectMapper.writeValueAsString(accountRefList));
-            return getValidatedAccountObjects(accountRefArrayJSON, accountList);
-        } catch (JsonProcessingException e) {
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                    "Failed to process account reference objects", e);
-        }
+        return getValidatedAccountObjects(new JSONArray(JsonUtil.serializeToJsonString(accountRefList)),
+                accountList);
     }
 
     /**
@@ -402,7 +384,7 @@ public class ConsentAuthorizationUtil {
     public static boolean isPaymentResourceSubmitted(String paymentId, String paymentData, String submissionType)
             throws IOException {
 
-        String paymentBackendURL = ConfigurationConstants.PAYMENT_BACKEND_URL;
+        String paymentBackendURL = ExtensionConfiguration.getPaymentBackendUrl();
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpPost request = new HttpPost(paymentBackendURL + "/" + submissionType + "/" + paymentId);
@@ -512,17 +494,13 @@ public class ConsentAuthorizationUtil {
     public static void verifySingleAuthorizedResource(List<AuthorizedResourcesAuthorizedDataInner> authorizedData)
             throws ExtensionException {
         if (authorizedData == null || authorizedData.isEmpty()) {
-            log.error("No authorized account retrieved for a consent that requires a single account");
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                    "No authorized account retrieved for a consent that requires a single account");
+            throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
+                    ErrorConstants.SINGLE_ACCOUNT_CONSENT_ACCOUNT_MISSING);
         }
 
         if (authorizedData.size() > 1 || authorizedData.get(0).getAccounts().size() > 1) {
-            log.error("Retrieved more than one authorized account for a consent that " +
-            "can have only a single account");
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                    "Retrieved more than one authorized account for a consent that " +
-                    "can have only a single account");
+            throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
+                    ErrorConstants.SINGLE_ACCOUNT_CONSENT_MULTIPLE_ACCOUNTS);
         }
     }
 
@@ -544,9 +522,7 @@ public class ConsentAuthorizationUtil {
             throws ExtensionException, AuthorizationFailureException {
 
         String consentType = requestData.getConsentResource().getType();
-        boolean isTransaction = ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString().equals(consentType)
-                || ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString().equals(consentType)
-                || ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString().equals(consentType);
+        boolean isTransaction = ExtensionEnums.ConsentTypeEnum.isPaymentType(consentType);
 
         String newConsentStatus;
         if (!isApproved) {
@@ -561,8 +537,7 @@ public class ConsentAuthorizationUtil {
                     }
                     throw new AuthorizationFailureException(ErrorConstants.APPROVE_WITH_NO_ACCOUNTS_ERROR);
                 } else {
-                    log.error(ErrorConstants.APPROVE_WITH_NO_ACCOUNTS_ERROR);
-                    throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
+                    throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
                             ErrorConstants.APPROVE_WITH_NO_ACCOUNTS_ERROR);
                 }
             }

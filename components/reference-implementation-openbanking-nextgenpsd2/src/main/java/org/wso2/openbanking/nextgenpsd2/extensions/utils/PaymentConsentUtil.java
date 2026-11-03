@@ -47,7 +47,10 @@ import javax.ws.rs.core.Response;
 /**
  * Utility class for payment consent management.
  */
-public class PaymentConsentUtil {
+public final class PaymentConsentUtil {
+
+    private PaymentConsentUtil() {
+    }
     private static final Log log = LogFactory.getLog(PaymentConsentUtil.class);
 
     /**
@@ -59,7 +62,7 @@ public class PaymentConsentUtil {
      */
     public static void validatePaymentInitiationPayload(JSONObject requestPayload, String resourcePath)
             throws ValidationFailureException, ExtensionException {
-        switch (CommonConsentValidationUtil.getServiceDifferentiatingRequestPath(resourcePath)) {
+        switch (ConsentPathUtil.getServiceDifferentiatingRequestPath(resourcePath)) {
             case CommonConstants.PAYMENTS_SERVICE_PATH:
                 CommonConsentValidationUtil
                         .validateJSONFromModel(requestPayload.toString(), SinglePaymentInitiationPayload.class);
@@ -77,7 +80,7 @@ public class PaymentConsentUtil {
 
             default:
                 // Execution shouldn't reach here given that path is validated prior to reaching this point
-                throw new ValidationFailureException(ValidationFailureException.ErrorCode.INTERNAL_SERVER_ERROR,
+                throw new ValidationFailureException(Response.Status.INTERNAL_SERVER_ERROR,
                         ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                                 TPPMessage.CodeEnum.RESOURCE_UNKNOWN_404, ErrorConstants.PATH_INVALID));
         }
@@ -98,24 +101,37 @@ public class PaymentConsentUtil {
 
         JSONArray chosenSCAMethods = new JSONArray();
         for (ScaMethod scaMethod : scaMethods) {
-            chosenSCAMethods.put(CommonConsentValidationUtil.convertObjectToJson(scaMethod));
+            chosenSCAMethods.put(JsonUtil.convertObjectToJson(scaMethod));
         }
 
         if (scaMethods.size() > 1) {
             payload.put(CommonConstants.SCA_METHODS, chosenSCAMethods);
-        } else {
+        } else if (scaMethods.size() == 1) {
+            // No SCA method is chosen when SCA is not required, in which case neither field is returned
             payload.put(CommonConstants.CHOSEN_SCA_METHOD, chosenSCAMethods.get(0));
         }
     }
 
     /**
-     * Helper method to extract payment product from resource path.
+     * Helper method to extract payment product from resource path, which is the second element of a payment
+     * consent path such as payments/sepa-credit-transfers.
      *
      * @param consentResourcePath payment consent resource path
      * @return payment product
+     * @throws ValidationFailureException if the path carries no payment product
+     * @throws ExtensionException if construction of the error failed
      */
-    public static String getPaymentProduct(String consentResourcePath) {
-        return consentResourcePath.split("/")[1];
+    public static String getPaymentProduct(String consentResourcePath)
+            throws ValidationFailureException, ExtensionException {
+        String[] pathElements = consentResourcePath == null ? new String[0] : consentResourcePath.split("/");
+
+        if (pathElements.length < 2 || StringUtils.isBlank(pathElements[1])) {
+            throw new ValidationFailureException(Response.Status.NOT_FOUND,
+                    ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
+                            TPPMessage.CodeEnum.PRODUCT_UNKNOWN, ErrorConstants.PATH_INVALID));
+        }
+
+        return pathElements[1];
     }
 
     /**
@@ -134,15 +150,15 @@ public class PaymentConsentUtil {
         // Extract payment product from attributes
         String paymentProductFromAttributes;
         try {
-            JSONObject attributesJSON = CommonConsentValidationUtil.convertObjectToJson(attributes);
+            JSONObject attributesJSON = JsonUtil.convertObjectToJson(attributes);
             paymentProductFromAttributes = attributesJSON.getString(CommonConstants.PAYMENT_PRODUCT_CC);
         } catch (JSONException e) {
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                    "Failed to extract payment product from consent");
+            throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
+                    ErrorConstants.PAYMENT_PRODUCT_NOT_FOUND, e);
         }
 
         if (!paymentProductFromAttributes.equals(paymentProductFromPath)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError(
                     null, TPPMessage.CategoryEnum.ERROR, TPPMessage.CodeEnum.PRODUCT_INVALID,
                     "Consent payment product mismatch"));
@@ -163,7 +179,7 @@ public class PaymentConsentUtil {
         // Initialize basic consent data
         Map<String, List<String>> basicConsentData = new HashMap<>();
 
-        JSONObject receipt = CommonConsentValidationUtil
+        JSONObject receipt = JsonUtil
                 .convertObjectToJson(requestData.getConsentResource().getReceipt());
 
         // Populate basic consent data with common payment details
@@ -189,7 +205,7 @@ public class PaymentConsentUtil {
         // Initialize basic consent data
         Map<String, List<String>> basicConsentData = new HashMap<>();
 
-        JSONObject receipt = CommonConsentValidationUtil
+        JSONObject receipt = JsonUtil
                 .convertObjectToJson(requestData.getConsentResource().getReceipt());
 
         // Build bulk payment array
@@ -271,7 +287,7 @@ public class PaymentConsentUtil {
         // Initialize basic consent data
         Map<String, List<String>> basicConsentData = new HashMap<>();
 
-        JSONObject receipt = CommonConsentValidationUtil
+        JSONObject receipt = JsonUtil
                 .convertObjectToJson(requestData.getConsentResource().getReceipt());
 
         List<String> paymentDetails = new ArrayList<>();
@@ -312,9 +328,7 @@ public class PaymentConsentUtil {
             throws ExtensionException {
         String consentType = consentResource.getType();
 
-        if (StringUtils.equals(CommonConstants.PAYMENTS, consentType)
-                || StringUtils.equals(CommonConstants.BULK_PAYMENTS, consentType)
-                || StringUtils.equals(CommonConstants.PERIODIC_PAYMENTS, consentType)) {
+        if (ExtensionEnums.ConsentTypeEnum.isPaymentType(consentType)) {
             try {
                 String paymentId = consentResource.getId();
 
@@ -324,14 +338,12 @@ public class PaymentConsentUtil {
                         consentResource.getAuthorizations())) {
                     // If the current authorisation resource is a submission auth resource
 
-                    String paymentReceipt = CommonConsentValidationUtil
+                    String paymentReceipt = JsonUtil
                             .convertObjectToJson(consentResource.getReceipt()).toString();
                     if (!ConsentAuthorizationUtil.isPaymentResourceSubmitted(paymentId, paymentReceipt,
-                            "submit")) {
-                        log.error("Error occurred while submitting the payment," +
-                                " please retry");
-                        throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                                ErrorConstants.PAYMENT_SUBMISSION_FAILED);
+                            CommonConstants.PAYMENT_SUBMISSION)) {
+                        throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR,
+                                ErrorConstants.SERVER_ERROR, ErrorConstants.PAYMENT_SUBMISSION_FAILED);
                     }
                 } else if (StringUtils.equals(ExtensionEnums.AuthTypeEnum.CANCELLATION.toString(),
                         authorizingResource.getType())
@@ -341,20 +353,17 @@ public class PaymentConsentUtil {
                     // If the current authorisation resource is a cancellation auth resource
                     // and consent is not single payment
 
-                    String paymentReceipt = CommonConsentValidationUtil
+                    String paymentReceipt = JsonUtil
                             .convertObjectToJson(consentResource.getReceipt()).toString();
                     if (!ConsentAuthorizationUtil.isPaymentResourceSubmitted(paymentId, paymentReceipt,
-                            "cancel")) {
-                        log.error("Error occurred while cancelling the payment," +
-                                " please retry");
-                        throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                                ErrorConstants.PAYMENT_CANCELLATION_FAILED);
+                            CommonConstants.PAYMENT_CANCELLATION)) {
+                        throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR,
+                                ErrorConstants.SERVER_ERROR, ErrorConstants.PAYMENT_CANCELLATION_FAILED);
                     }
                 }
             } catch (IOException e) {
-                log.error("Exception occurred processing payment, please retry", e);
-                throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                        ErrorConstants.PAYMENT_FAILED);
+                throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR, ErrorConstants.SERVER_ERROR,
+                        ErrorConstants.PAYMENT_FAILED, e);
             }
         }
     }

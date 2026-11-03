@@ -28,7 +28,10 @@ import javax.ws.rs.core.Response;
 /**
  * Utility class for building the responses returned by the extension endpoints.
  */
-public class ExtensionResponseUtil {
+public final class ExtensionResponseUtil {
+
+    private ExtensionResponseUtil() {
+    }
 
     /**
      * Builds the response returned when an extension request is handled successfully.
@@ -53,7 +56,7 @@ public class ExtensionResponseUtil {
      * @throws ExtensionException if the response payload cannot be serialized
      */
     public static Response buildSerializedSuccessResponse(Object responsePayload) throws ExtensionException {
-        return Response.ok().entity(CommonConsentValidationUtil.serializeToJsonString(responsePayload)).build();
+        return Response.ok().entity(JsonUtil.serializeToJsonString(responsePayload)).build();
     }
 
     /**

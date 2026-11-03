@@ -35,7 +35,10 @@ import java.util.Map;
 /**
  * Utility class for payment consent management.
  */
-public class FundsConfirmationConsentUtil {
+public final class FundsConfirmationConsentUtil {
+
+    private FundsConfirmationConsentUtil() {
+    }
 
     /**
      * Method to get the funds confirmation initiation response without links.
@@ -52,7 +55,7 @@ public class FundsConfirmationConsentUtil {
 
         JSONArray chosenSCAMethods = new JSONArray();
         for (ScaMethod scaMethod : scaMethods) {
-            chosenSCAMethods.put(CommonConsentValidationUtil.convertObjectToJson(scaMethod));
+            chosenSCAMethods.put(JsonUtil.convertObjectToJson(scaMethod));
         }
 
         if (scaMethods.size() > 1) {
@@ -75,7 +78,7 @@ public class FundsConfirmationConsentUtil {
 
         Map<String, List<String>> basicConsentData = new HashMap<>();
 
-        JSONObject receipt = CommonConsentValidationUtil
+        JSONObject receipt = JsonUtil
                 .convertObjectToJson(requestData.getConsentResource().getReceipt());
 
         List<String> consentDetails = new ArrayList<>();

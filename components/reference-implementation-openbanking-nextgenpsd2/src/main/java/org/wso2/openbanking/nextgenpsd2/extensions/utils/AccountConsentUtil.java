@@ -18,15 +18,10 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.utils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.AuthorizationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
@@ -66,11 +61,10 @@ import javax.ws.rs.core.Response;
 /**
  * Utility class for Account consent management.
  */
-public class AccountConsentUtil {
-    private static Log log = LogFactory.getLog(AccountConsentUtil.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+public final class AccountConsentUtil {
+
+    private AccountConsentUtil() {
+    }
 
     /**
      * Method to get the account initiation response without links.
@@ -87,7 +81,7 @@ public class AccountConsentUtil {
 
         JSONArray chosenSCAMethods = new JSONArray();
         for (ScaMethod scaMethod : scaMethods) {
-            chosenSCAMethods.put(CommonConsentValidationUtil.convertObjectToJson(scaMethod));
+            chosenSCAMethods.put(JsonUtil.convertObjectToJson(scaMethod));
         }
 
         if (scaMethods.size() > 1) {
@@ -189,7 +183,7 @@ public class AccountConsentUtil {
                                                         PopulateConsentAuthorizeScreenData requestData)
             throws ExtensionException {
         Map<String, List<String>> basicConsentData = new HashMap<>();
-        JSONObject receipt = CommonConsentValidationUtil
+        JSONObject receipt = JsonUtil
                 .convertObjectToJson(requestData.getConsentResource().getReceipt());
 
         List<String> consentDetails = new ArrayList<>();
@@ -255,8 +249,8 @@ public class AccountConsentUtil {
             }
         }
 
-        throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR, "invalid_request",
-                "Empty access object retrieved");
+        throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR, ErrorConstants.SERVER_ERROR,
+                ErrorConstants.EMPTY_ACCESS_OBJECT);
     }
 
     /**
@@ -301,13 +295,12 @@ public class AccountConsentUtil {
         responseData.getConsentData().setAllowMultipleAccounts(true);
 
         // Fetch bank offered consumer accounts
-        String shareableAccountsEndpoint = ConfigurationConstants.SHARABLE_ACCOUNTS_RETRIEVAL_ENDPOINT;
-        JSONArray bankOfferedAccounts = DataRetrievalUtil.getAccountsFromEndpoint(userId, shareableAccountsEndpoint,
+        String shareableAccountsEndpoint = ExtensionConfiguration.getShareableAccountsEndpoint();
+        JSONArray bankOfferedAccounts = DataRetrievalUtil.getUserAccounts(userId, shareableAccountsEndpoint,
                 new HashMap<>(), new HashMap<>());
 
         if (bankOfferedAccounts == null) {
-            log.error("No accounts found");
-            throw new AuthorizationFailureException("No sharable accounts found for the user.");
+            throw new AuthorizationFailureException(ErrorConstants.SHAREABLE_ACCOUNTS_NOT_FOUND);
         }
 
         SuccessResponsePopulateConsentAuthorizeScreenDataConsumerData consumerData = responseData.getConsumerData();
@@ -321,7 +314,7 @@ public class AccountConsentUtil {
             JSONObject accountRefJSON = (JSONObject) accountRefObj;
             Account accountObject = ConsentAuthorizationUtil.getAccountFromAccountRef(accountRefJSON);
 
-            consumerData.addAccountsItem(objectMapper.convertValue(accountObject,
+            consumerData.addAccountsItem(JsonUtil.convertValue(accountObject,
                     SuccessResponsePopulateConsentAuthorizeScreenDataConsumerDataAccountsInner.class));
         }
     }
@@ -333,20 +326,23 @@ public class AccountConsentUtil {
      * @param receipt consent initiation payload
      * @param userId id of the user authorizing the consent
      * @return list of permission objects to be displayed on consent authorization screen
+     * @throws ExtensionException if the account references of the receipt cannot be read
+     * @throws AuthorizationFailureException if the accounts of the user cannot be retrieved or do not cover the
+     *                                       accounts the consent was initiated for
      */
     public static List<SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner>
-    buildPermissionsForDedicatedAccounts(AccountInitiationPayload receipt, String userId) throws ExtensionException {
+    buildPermissionsForDedicatedAccounts(AccountInitiationPayload receipt, String userId)
+            throws ExtensionException, AuthorizationFailureException {
         List<SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner> permissionsList =
                 new ArrayList<>();
         AccountAccess accessObject = receipt.getAccess();
 
-        String shareableAccountsEndpoint = ConfigurationConstants.SHARABLE_ACCOUNTS_RETRIEVAL_ENDPOINT;
-        JSONArray bankOfferedAccounts = DataRetrievalUtil.getAccountsFromEndpoint(userId, shareableAccountsEndpoint,
+        String shareableAccountsEndpoint = ExtensionConfiguration.getShareableAccountsEndpoint();
+        JSONArray bankOfferedAccounts = DataRetrievalUtil.getUserAccounts(userId, shareableAccountsEndpoint,
                 new HashMap<>(), new HashMap<>());
 
         if (bankOfferedAccounts == null) {
-            log.error("No accounts found");
-            return null;
+            throw new AuthorizationFailureException(ErrorConstants.SHAREABLE_ACCOUNTS_NOT_FOUND);
         }
 
         // From receipt
@@ -385,61 +381,22 @@ public class AccountConsentUtil {
         }
 
         if (areAccountsInvalid) {
-            log.error("Consent accounts mismatch");
-            return null;
+            throw new AuthorizationFailureException(ErrorConstants.ACCOUNTS_NOT_FOUND_FOR_USER);
         }
 
         if (validatedBalancesAccountObjects != null) {
-            SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner balancePermissions =
-                    new SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner();
-
-            // Set permission uid
-            balancePermissions.setUid(UUID.randomUUID().toString());
-
-            // Set permission display values
-            balancePermissions
-                    .addDisplayValuesItem(CommonConstants.ACCOUNTS_PERMISSION)
-                    .addDisplayValuesItem(CommonConstants.BALANCES_PERMISSION);
-
-            // Set initiated accounts
-            balancePermissions.setInitiatedAccounts(validatedBalancesAccountObjects);
-
-            permissionsList.add(balancePermissions);
+            permissionsList.add(buildPermission(validatedBalancesAccountObjects,
+                    CommonConstants.ACCOUNTS_PERMISSION, CommonConstants.BALANCES_PERMISSION));
         }
 
         if (validatedTransactionsAccountObjects != null) {
-            SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner transactionPermissions =
-                    new SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner();
-
-            // Set permission uid
-            transactionPermissions.setUid(UUID.randomUUID().toString());
-
-            // Set permission display values
-            transactionPermissions
-                    .addDisplayValuesItem(CommonConstants.ACCOUNTS_PERMISSION)
-                    .addDisplayValuesItem(CommonConstants.TRANSACTIONS_PERMISSION);
-
-            // Set initiated accounts
-            transactionPermissions.setInitiatedAccounts(validatedTransactionsAccountObjects);
-
-            permissionsList.add(transactionPermissions);
+            permissionsList.add(buildPermission(validatedTransactionsAccountObjects,
+                    CommonConstants.ACCOUNTS_PERMISSION, CommonConstants.TRANSACTIONS_PERMISSION));
         }
 
         if (validatedAccountsAccountObjects != null) {
-            SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner accountsPermissions =
-                    new SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner();
-
-            // Set permission uid
-            accountsPermissions.setUid(UUID.randomUUID().toString());
-
-            // Set permission display values
-            accountsPermissions
-                    .addDisplayValuesItem(CommonConstants.ACCOUNTS_PERMISSION);
-
-            // Set initiated accounts
-            accountsPermissions.setInitiatedAccounts(validatedAccountsAccountObjects);
-
-            permissionsList.add(accountsPermissions);
+            permissionsList.add(buildPermission(validatedAccountsAccountObjects,
+                    CommonConstants.ACCOUNTS_PERMISSION));
         }
 
         return permissionsList;
@@ -453,40 +410,21 @@ public class AccountConsentUtil {
      * @return list of permission objects to be displayed on consent authorization screen
      */
     public static List<SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner>
-    buildPermissionsForAllPsd2Accounts(String userId) {
+    buildPermissionsForAllPsd2Accounts(String userId) throws AuthorizationFailureException {
         List<SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner> permissionsList =
                 new ArrayList<>();
 
-        String shareableAccountsEndpoint = ConfigurationConstants.SHARABLE_ACCOUNTS_RETRIEVAL_ENDPOINT;
-        JSONArray bankOfferedAccounts = DataRetrievalUtil.getAccountsFromEndpoint(userId,
+        String shareableAccountsEndpoint = ExtensionConfiguration.getShareableAccountsEndpoint();
+        JSONArray bankOfferedAccounts = DataRetrievalUtil.getUserAccounts(userId,
                 shareableAccountsEndpoint, new HashMap<>(), new HashMap<>());
 
         if (bankOfferedAccounts == null) {
-            log.error("No accounts found");
-            return null;
+            throw new AuthorizationFailureException(ErrorConstants.SHAREABLE_ACCOUNTS_NOT_FOUND);
         }
 
-        SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner permissionObj =
-                new SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner();
-
-        // Set permission uid
-        permissionObj.setUid(UUID.randomUUID().toString());
-
-        // Set permission display values
-        permissionObj
-                .addDisplayValuesItem(CommonConstants.ACCOUNTS_PERMISSION)
-                .addDisplayValuesItem(CommonConstants.BALANCES_PERMISSION)
-                .addDisplayValuesItem(CommonConstants.TRANSACTIONS_PERMISSION);
-
-
-        // Set initiated accounts for populate consent page
-        List<Account> initiatedAccounts = new ArrayList<>();
-        for (Object accountObj: bankOfferedAccounts) {
-            initiatedAccounts.add(ConsentAuthorizationUtil.getAccountFromAccountRef((JSONObject) accountObj));
-        }
-        permissionObj.setInitiatedAccounts(initiatedAccounts);
-
-        permissionsList.add(permissionObj);
+        permissionsList.add(buildPermission(toAccounts(bankOfferedAccounts),
+                CommonConstants.ACCOUNTS_PERMISSION, CommonConstants.BALANCES_PERMISSION,
+                CommonConstants.TRANSACTIONS_PERMISSION));
 
         return permissionsList;
     }
@@ -500,46 +438,68 @@ public class AccountConsentUtil {
      * @return list of permission objects to be displayed on consent authorization screen
      */
     public static List<SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner>
-    buildPermissionsForAvailableAccounts(String userId, String permission) {
+    buildPermissionsForAvailableAccounts(String userId, String permission) throws AuthorizationFailureException {
         List<SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner> permissionsList =
                 new ArrayList<>();
 
-        String shareableAccountsEndpoint = ConfigurationConstants.SHARABLE_ACCOUNTS_RETRIEVAL_ENDPOINT;
-        JSONArray bankOfferedAccounts = DataRetrievalUtil.getAccountsFromEndpoint(userId,
+        String shareableAccountsEndpoint = ExtensionConfiguration.getShareableAccountsEndpoint();
+        JSONArray bankOfferedAccounts = DataRetrievalUtil.getUserAccounts(userId,
                 shareableAccountsEndpoint, new HashMap<>(), new HashMap<>());
 
         if (bankOfferedAccounts == null) {
-            log.error("No accounts found");
-            return null;
+            throw new AuthorizationFailureException(ErrorConstants.SHAREABLE_ACCOUNTS_NOT_FOUND);
         }
 
-        SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner permissionObj =
-                new SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner();
-
-        // Set permission uid
-        permissionObj.setUid(UUID.randomUUID().toString());
-
-        // Set permission display values
         if (StringUtils.equalsIgnoreCase(permission,
                 ExtensionEnums.PermissionEnum.AVAILABLE_ACCOUNTS_WITH_BALANCES.toString())) {
-            permissionObj
-                    .addDisplayValuesItem(CommonConstants.ACCOUNTS_PERMISSION)
-                    .addDisplayValuesItem(CommonConstants.BALANCES_PERMISSION);
+            permissionsList.add(buildPermission(toAccounts(bankOfferedAccounts),
+                    CommonConstants.ACCOUNTS_PERMISSION, CommonConstants.BALANCES_PERMISSION));
         } else {
-            permissionObj
-                    .addDisplayValuesItem(CommonConstants.ACCOUNTS_PERMISSION);
+            permissionsList.add(buildPermission(toAccounts(bankOfferedAccounts),
+                    CommonConstants.ACCOUNTS_PERMISSION));
         }
-
-        // Set initiated accounts for populate consent page
-        List<Account> initiatedAccounts = new ArrayList<>();
-        for (Object accountObj: bankOfferedAccounts) {
-            initiatedAccounts.add(ConsentAuthorizationUtil.getAccountFromAccountRef((JSONObject) accountObj));
-        }
-        permissionObj.setInitiatedAccounts(initiatedAccounts);
-
-        permissionsList.add(permissionObj);
 
         return permissionsList;
+    }
+
+    /**
+     * Builds a permission to be displayed on the consent authorization screen.
+     *
+     * @param initiatedAccounts accounts the permission is requested for, or null when the PSU selects them
+     * @param displayValues     access the permission grants, as it is displayed to the PSU
+     * @return the built permission
+     */
+    private static SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner buildPermission(
+            List<Account> initiatedAccounts, String... displayValues) {
+        SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner permission =
+                new SuccessResponsePopulateConsentAuthorizeScreenDataConsentDataPermissionsInner();
+
+        permission.setUid(UUID.randomUUID().toString());
+        for (String displayValue : displayValues) {
+            permission.addDisplayValuesItem(displayValue);
+        }
+        if (initiatedAccounts != null) {
+            permission.setInitiatedAccounts(initiatedAccounts);
+        }
+
+        return permission;
+    }
+
+    /**
+     * Maps the account references retrieved from the banking backend to the accounts displayed on the consent
+     * authorization screen.
+     *
+     * @param accountRefs account references retrieved from the banking backend
+     * @return the accounts to display
+     */
+    private static List<Account> toAccounts(JSONArray accountRefs) {
+        List<Account> accounts = new ArrayList<>();
+
+        for (Object accountRef : accountRefs) {
+            accounts.add(ConsentAuthorizationUtil.getAccountFromAccountRef((JSONObject) accountRef));
+        }
+
+        return accounts;
     }
 
     /**
@@ -548,33 +508,34 @@ public class AccountConsentUtil {
      * @param authorizedObject authorized permission and account details from the consent page
      * @param permission permission to bind with accounts
      * @return account to permission mappings for persistence
+     * @throws ExtensionException if an authorized account carries no supported account reference type
      */
     public static List<Resource> createAccountPermissionMappings(
             AuthorizedResourcesAuthorizedDataInner authorizedObject,
-            String permission) {
+            String permission) throws ExtensionException {
         List<Account> accountList = authorizedObject.getAccounts();
         List<Resource> accountPermissionMapping = new ArrayList<>();
 
         for (Account account : accountList) {
-            String referenceType = CommonConsentValidationUtil
-                    .getAccountReferenceType(account.getAdditionalProperties());
+            Map<String, Object> accountProperties = account.getAdditionalProperties();
+            String referenceType = CommonConsentValidationUtil.getAccountReferenceType(accountProperties);
 
-            // Append account reference type, reference and currency to account id for mapping
-            String referenceToPersist = String.format("%s%s%s", referenceType, CommonConstants.DELIMITER,
-                    account.getAdditionalProperties().get(referenceType));
-            if (account.getAdditionalProperties().containsKey(CommonConstants.CURRENCY)) {
-                referenceToPersist += String.format("%s%s", CommonConstants.DELIMITER,
-                        account.getAdditionalProperties().get(CommonConstants.CURRENCY));
+            if (referenceType == null) {
+                // Should be unreachable since the accounts are the ones the authorize screen displayed
+                throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
+                        ErrorConstants.ACCOUNT_REFERENCE_TYPE_UNSUPPORTED);
             }
 
+            // Append account reference type, reference and currency to account id for mapping
+            String referenceToPersist = ConsentValidationUtil.buildAccountReferenceToPersist(referenceType,
+                    (String) accountProperties.get(referenceType),
+                    (String) accountProperties.get(CommonConstants.CURRENCY));
+
             // Create a new Resource object with the account ID, permission, and status
-            Resource resource = new Resource()
+            accountPermissionMapping.add(new Resource()
                     .accountId(referenceToPersist)
                     .permission(permission)
-                    .status("active");
-
-            // Add the resource to the mapping list
-            accountPermissionMapping.add(resource);
+                    .status(CommonConstants.ACTIVE));
         }
 
         return accountPermissionMapping;
@@ -587,7 +548,7 @@ public class AccountConsentUtil {
      * @param newAccess new access object to replace the old object
      */
     public static void updateReceiptAccess(StoredDetailedConsentResourceData consentResource, AccountAccess newAccess) {
-        AccountInitiationPayload receiptObj = objectMapper.convertValue(consentResource.getReceipt(),
+        AccountInitiationPayload receiptObj = JsonUtil.convertValue(consentResource.getReceipt(),
                 AccountInitiationPayload.class);
 
         // Update receipt only if there are account selections made, to keep the receipt specification compliant

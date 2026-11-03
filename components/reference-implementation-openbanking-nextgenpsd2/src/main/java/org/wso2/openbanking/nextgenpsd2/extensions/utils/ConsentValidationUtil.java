@@ -22,7 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONObject;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ConsentAccessContext;
@@ -34,14 +34,19 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredResource;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
+
+import javax.ws.rs.core.Response;
 
 /**
  * Utility class for validating data access against a stored consent.
  */
-public class ConsentValidationUtil {
+public final class ConsentValidationUtil {
+
+    private ConsentValidationUtil() {
+    }
 
     private static final Log log = LogFactory.getLog(ConsentValidationUtil.class);
-
 
     /**
      * Flattens the resources of every authorisation of the consent into a single list.
@@ -119,12 +124,30 @@ public class ConsentValidationUtil {
                 continue;
             }
             if (StringUtils.equals(resource.getPermission(), accessMethod)
-                    && accountReference.contains(accountId)
+                    && addressesAccount(accountReference, accountId)
                     && StringUtils.equals(resource.getStatus(), CommonConstants.ACTIVE)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Checks whether a stored account reference addresses the account the request is made for. The reference is
+     * stored as the reference type, the reference and the currency if present, separated by the delimiter, so
+     * the account is matched on the reference alone rather than on any part of the stored value. A reference
+     * that does not carry the delimiter is matched as a whole, since it holds the reference by itself.
+     *
+     * @param accountReference account reference as it is stored against the consent
+     * @param accountId        account ID addressed by the request
+     * @return true if the stored reference addresses the requested account
+     */
+    private static boolean addressesAccount(String accountReference, String accountId) {
+
+        String[] referenceElements = accountReference.split(Pattern.quote(CommonConstants.DELIMITER));
+        String storedAccountId = referenceElements.length > 1 ? referenceElements[1] : accountReference;
+
+        return StringUtils.equals(storedAccountId, accountId);
     }
 
     /**
@@ -275,13 +298,33 @@ public class ConsentValidationUtil {
         if (referenceType == null) {
             return "";
         }
-        String accountReference = String.format("%s%s%s", referenceType, CommonConstants.DELIMITER,
-                accountRefObject.getString(referenceType));
-        if (accountRefObject.has(CommonConstants.CURRENCY)) {
-            accountReference += String.format("%s%s", CommonConstants.DELIMITER,
-                    accountRefObject.getString(CommonConstants.CURRENCY));
+
+        return buildAccountReferenceToPersist(referenceType, accountRefObject.getString(referenceType),
+                accountRefObject.has(CommonConstants.CURRENCY)
+                        ? accountRefObject.getString(CommonConstants.CURRENCY) : null);
+    }
+
+    /**
+     * Builds the account reference in the format it is stored against the consent. The accounts an access
+     * request is validated against are read back in this format, so an account must be persisted and looked
+     * up through this method for the two to meet.
+     *
+     * @param referenceType    type of the account reference, such as iban
+     * @param accountReference the account reference itself
+     * @param currency         currency of the account, or null for an account that carries none
+     * @return the account reference in its stored format
+     */
+    public static String buildAccountReferenceToPersist(String referenceType, String accountReference,
+                                                        String currency) {
+
+        String referenceToPersist = String.format("%s%s%s", referenceType, CommonConstants.DELIMITER,
+                accountReference);
+
+        if (currency != null) {
+            referenceToPersist += String.format("%s%s", CommonConstants.DELIMITER, currency);
         }
-        return accountReference;
+
+        return referenceToPersist;
     }
 
     /**
@@ -321,8 +364,8 @@ public class ConsentValidationUtil {
             throws ValidationFailureException, ExtensionException {
 
         if (!context.isPresent()) {
-            if (ConfigurationConstants.REQUIRE_CONSENT_ACCESS_CONTEXT) {
-                throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            if (ExtensionConfiguration.isConsentAccessContextRequired()) {
+                throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                         ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                                 TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.DATA_REQUEST_CONTEXT_MISSING));
             }
@@ -354,12 +397,12 @@ public class ConsentValidationUtil {
 
         String xRequestId = context.getHeader(CommonConstants.X_REQUEST_ID_PROPER_CASE_HEADER);
         if (StringUtils.isBlank(xRequestId)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.X_REQUEST_ID_MISSING));
         }
         if (!CommonConsentValidationUtil.isValidUuid(xRequestId)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.X_REQUEST_ID_INVALID));
         }
@@ -367,29 +410,29 @@ public class ConsentValidationUtil {
         // The PSU-IP-Address header is optional on a data access request, but must carry a value when sent
         String psuIpAddress = context.getHeader(CommonConstants.PSU_IP_ADDRESS_PROPER_CASE_HEADER);
         if (psuIpAddress != null && StringUtils.isBlank(psuIpAddress)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, String.format("Invalid %s header",
                                     CommonConstants.PSU_IP_ADDRESS_PROPER_CASE_HEADER)));
         }
 
-        if (isPaymentConsent(consentResource.getType())) {
+        if (ExtensionEnums.ConsentTypeEnum.isPaymentType(consentResource.getType())) {
             return;
         }
 
         String consentIdHeader = context.getHeader(CommonConstants.CONSENT_ID_PROPER_CASE_HEADER);
         if (StringUtils.isBlank(consentIdHeader)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.CONSENT_ID_MISSING));
         }
         if (!CommonConsentValidationUtil.isValidUuid(consentIdHeader)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.CONSENT_ID_INVALID));
         }
         if (!StringUtils.equals(consentIdHeader, consentResource.getId())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.NOT_FOUND,
+            throw new ValidationFailureException(Response.Status.NOT_FOUND,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.RESOURCE_UNKNOWN_404, ErrorConstants.NO_CONSENT_FOR_CLIENT_ERROR));
         }
@@ -410,7 +453,7 @@ public class ConsentValidationUtil {
 
         String clientId = context.getClientId();
         if (clientId != null && !StringUtils.equals(clientId, consentResource.getClientId())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.NOT_FOUND,
+            throw new ValidationFailureException(Response.Status.NOT_FOUND,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.RESOURCE_UNKNOWN_404, ErrorConstants.NO_CONSENT_FOR_CLIENT_ERROR));
         }
@@ -426,7 +469,7 @@ public class ConsentValidationUtil {
                 }
             }
         }
-        throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+        throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                 ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                         TPPMessage.CodeEnum.PSU_CREDENTIALS_INVALID, ErrorConstants.NO_MATCHING_USER_FOR_CONSENT));
     }
@@ -457,22 +500,9 @@ public class ConsentValidationUtil {
         }
 
         if (!matches) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.CONSENT_ID_TYPE_MISMATCH));
         }
-    }
-
-    /**
-     * Checks whether the consent type is one of the payment types.
-     *
-     * @param consentType type of the consent
-     * @return true if the consent is a payment consent
-     */
-    public static boolean isPaymentConsent(String consentType) {
-
-        return StringUtils.equals(consentType, ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString())
-                || StringUtils.equals(consentType, ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString())
-                || StringUtils.equals(consentType, ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString());
     }
 }

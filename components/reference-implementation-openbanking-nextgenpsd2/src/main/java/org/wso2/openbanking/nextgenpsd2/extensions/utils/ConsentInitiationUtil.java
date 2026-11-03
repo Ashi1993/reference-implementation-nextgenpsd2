@@ -19,7 +19,7 @@
 package org.wso2.openbanking.nextgenpsd2.extensions.utils;
 
 import org.json.JSONObject;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaApproach;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaMethod;
@@ -38,7 +38,10 @@ import javax.ws.rs.core.Response;
 /**
  * Util class containing common operations required in consent initiation.
  */
-public class ConsentInitiationUtil {
+public final class ConsentInitiationUtil {
+
+    private ConsentInitiationUtil() {
+    }
     /**
      * Method to construct consent initiation response.
      *
@@ -62,7 +65,7 @@ public class ConsentInitiationUtil {
                 apiVersion, resourcePath, requestBody.getData().getConsentId());
         headers.put(CommonConstants.LOCATION_HEADER, locationString);
 
-        Map<String, Object> scaElements = CommonConsentValidationUtil.getScaApproachAndMethods(isRedirectPreferred,
+        Map<String, Object> scaElements = ScaUtil.getScaApproachAndMethods(isRedirectPreferred,
                 isSCARequired);
         ScaApproach scaApproach = (ScaApproach) scaElements.get(CommonConstants.SCA_APPROACH_KEY);
         ArrayList<ScaMethod> scaMethods =
@@ -135,7 +138,7 @@ public class ConsentInitiationUtil {
                     apiVersion, requestPath, consentId, authorisationId);
             if (ExtensionEnums.ScaApproachEnum.REDIRECT.equals(currentScaApproach.getApproach())) {
                 // Implicit REDIRECT approach
-                String wellKnown = ConfigurationConstants.OAUTH_METADATA_ENDPOINT;
+                String wellKnown = ExtensionConfiguration.getOauthMetadataEndpoint();
                 JSONObject scaOAuth = new JSONObject();
                 scaOAuth.put(CommonConstants.HREF, wellKnown);
                 links.put(CommonConstants.SCA_OAUTH, scaOAuth);
@@ -155,7 +158,7 @@ public class ConsentInitiationUtil {
         } else {
             // Explicit authorisation not supported
             // ToDo: revisit once auth resources can be added explicitly
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
+            throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
                     ErrorConstants.EXPLICIT_AUTH_NOT_SUPPORTED);
             /*
             String startAuthorisationsLink = String.format(ConsentExtensionConstants.START_AUTH_LINK_TEMPLATE,
@@ -197,7 +200,7 @@ public class ConsentInitiationUtil {
         JSONObject headersToSend = new JSONObject();
 
         String apiVersion = CommonConsentValidationUtil.getApiVersion(consentType);
-        boolean isScaRequired = Boolean.parseBoolean(ConfigurationConstants.IS_SCA_REQUIRED);
+        boolean isScaRequired = ExtensionConfiguration.isScaRequired();
 
         buildEnrichedConsentInitiationResponse(consentType, requestBody, payloadToSend, headersToSend,
                 true, apiVersion, isScaRequired);

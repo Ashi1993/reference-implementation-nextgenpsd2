@@ -25,8 +25,9 @@ import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureE
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentRequestBody;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseConsentRevocation;
-import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentHandlerFactory;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.HeaderUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -52,8 +53,8 @@ public class PreProcessConsentRevokeApiImpl {
         try {
             // Validate X-request-ID header
             // Enable forwarding of the specific header in accelerator configurations
-            CommonConsentValidationUtil.validateRequestIdentificationHeader(requestBody.getData().getRequestHeaders());
-            xRequestId = CommonConsentValidationUtil.getXRequestId(requestBody.getData().getRequestHeaders());
+            HeaderUtil.validateRequestIdentificationHeader(requestBody.getData().getRequestHeaders());
+            xRequestId = HeaderUtil.getXRequestId(requestBody.getData().getRequestHeaders());
 
             return ExtensionResponseUtil.buildSuccessResponse(revokeConsent(requestBody));
 
@@ -78,7 +79,7 @@ public class PreProcessConsentRevokeApiImpl {
      */
     private static SuccessResponseConsentRevocation revokeConsent(PreProcessConsentRequestBody requestBody)
             throws ExtensionException, ValidationFailureException {
-        ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
+        ConsentInitiationHandler consentInitiationHandler = ConsentHandlerFactory
                 .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
 
         return consentInitiationHandler.handleRevocation(requestBody);

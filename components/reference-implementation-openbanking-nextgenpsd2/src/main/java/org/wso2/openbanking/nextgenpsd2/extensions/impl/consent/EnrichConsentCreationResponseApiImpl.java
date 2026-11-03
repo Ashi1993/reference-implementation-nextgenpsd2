@@ -25,7 +25,8 @@ import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureE
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.EnrichConsentCreationRequestBody;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponseForResponseAlternation;
-import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentHandlerFactory;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 
@@ -61,9 +62,8 @@ public class EnrichConsentCreationResponseApiImpl {
             // Should be unreachable since resource path is validated in consent creation
             // Thus bad request error is thrown
             return ExtensionResponseUtil.buildErrorResponse(log,
-                    String.format("[%s] %s", requestId, INVALID_RESOURCE_PATH_ERROR), e,
-                    Response.Status.BAD_REQUEST,
-                    ErrorUtil.getErrorResponse("invalid_request", INVALID_RESOURCE_PATH_ERROR), null);
+                    String.format("[%s] %s", requestId, INVALID_RESOURCE_PATH_ERROR), e, Response.Status.BAD_REQUEST,
+                    ErrorUtil.getErrorResponse(ErrorConstants.INVALID_REQUEST, INVALID_RESOURCE_PATH_ERROR), null);
         }
     }
 
@@ -77,7 +77,8 @@ public class EnrichConsentCreationResponseApiImpl {
      */
     private static SuccessResponseForResponseAlternation enrichCreationResponse(
             EnrichConsentCreationRequestBody requestBody) throws ExtensionException, ValidationFailureException {
-        ConsentInitiationHandler consentHandler = CommonConsentValidationUtil
+
+        ConsentInitiationHandler consentHandler = ConsentHandlerFactory
                 .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
 
         return consentHandler.enrichCreationResponse(requestBody);

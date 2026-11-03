@@ -18,7 +18,6 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.model;
 
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

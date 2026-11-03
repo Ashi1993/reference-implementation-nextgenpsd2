@@ -45,14 +45,14 @@ public class PeriodicPaymentInitiationPayloadValidator implements
 
         // Validate startDate is in future
         if (payload.getStartDate() != null && !payload.getStartDate().isAfter(LocalDate.now(ZoneOffset.UTC))) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.START_DATE_NOT_FUTURE));
             return false;
         }
 
         // Validate endDate is in future
         if (payload.getEndDate() != null && !payload.getEndDate().isAfter(LocalDate.now(ZoneOffset.UTC))) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.END_DATE_NOT_FUTURE));
             return false;
         }
@@ -60,7 +60,7 @@ public class PeriodicPaymentInitiationPayloadValidator implements
         // Validate endDate if after startDate
         if (payload.getStartDate() != null && payload.getEndDate() != null
                 && !payload.getEndDate().isAfter(payload.getStartDate())) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.DATES_INCONSISTENT));
             return false;
         }
@@ -68,7 +68,7 @@ public class PeriodicPaymentInitiationPayloadValidator implements
         // Validate frequency is supported
         if (payload.getFrequency() != null && !CommonConstants.SUPPORTED_PERIODIC_PAYMENT_FREQUENCY_CODES
                 .contains(payload.getFrequency())) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.FREQUENCY_UNSUPPORTED));
             return false;
         }
@@ -77,7 +77,7 @@ public class PeriodicPaymentInitiationPayloadValidator implements
         if (payload.getExecutionRule() != null &&
                 !(CommonConstants.FOLLOWING_EXECUTION_RULE.equals(payload.getExecutionRule())
                         || CommonConstants.PRECEDING_EXECUTION_RULE.equals(payload.getExecutionRule()))) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.INVALID_EXECUTION_RULE));
             return false;
         }

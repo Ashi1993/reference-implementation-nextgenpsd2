@@ -18,8 +18,6 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.AuthorizationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
@@ -39,16 +37,14 @@ import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentAuthorizationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionEnums;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.FundsConfirmationConsentUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.JsonUtil;
 
 import java.util.List;
-
-import javax.ws.rs.core.Response;
 
 /**
  * Consent handler interface for processing CoF consent authorization related requests.
  */
 public class FundsConfirmationConsentAuthorizeHandler implements ConsentAuthorizationHandler {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Return consent data for confirmation of funds consents.
@@ -85,15 +81,8 @@ public class FundsConfirmationConsentAuthorizeHandler implements ConsentAuthoriz
             throws AuthorizationFailureException, ExtensionException {
 
         // Extract account reference from receipt
-        JSONObject accountRef;
-        try {
-            JSONObject receipt =
-                    new JSONObject(objectMapper.writeValueAsString(requestData.getConsentResource().getReceipt()));
-            accountRef = receipt.getJSONObject(CommonConstants.ACCOUNT);
-        } catch (JsonProcessingException e) {
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                    "Failed to fetch consent initiation payload from funds confirmation consent", e);
-        }
+        JSONObject receipt = JsonUtil.convertObjectToJson(requestData.getConsentResource().getReceipt());
+        JSONObject accountRef = receipt.getJSONObject(CommonConstants.ACCOUNT);
 
         // Populate subject account of the consent to be authorized by user
         CommonConsentValidationUtil.populateConsentInitiatedAccounts(responseData, requestData, accountRef);

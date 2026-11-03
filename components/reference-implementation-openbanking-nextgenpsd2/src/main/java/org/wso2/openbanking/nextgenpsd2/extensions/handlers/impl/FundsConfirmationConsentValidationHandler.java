@@ -22,7 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONObject;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentValidationHandler;
@@ -31,14 +31,16 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.TPPMessage;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredResource;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.ValidateConsentAccessRequestBody;
-import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentValidationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionEnums;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.JsonUtil;
 
 import java.util.List;
+
+import javax.ws.rs.core.Response;
 
 /**
  * Validates funds confirmation requests against a funds confirmation consent.
@@ -61,7 +63,7 @@ public class FundsConfirmationConsentValidationHandler implements ConsentValidat
         }
         if (!StringUtils.equals(consentResource.getStatus(),
                 ExtensionEnums.ConsentStatusEnum.VALID.toString())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_UNKNOWN, ErrorConstants.CONSENT_INVALID_STATE));
         }
@@ -83,14 +85,14 @@ public class FundsConfirmationConsentValidationHandler implements ConsentValidat
             throws ValidationFailureException, ExtensionException {
 
         if (dataRequestPayload == null) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.PAYLOAD_NOT_PRESENT_ERROR));
         }
 
-        JSONObject payload = CommonConsentValidationUtil.convertObjectToJson(dataRequestPayload);
+        JSONObject payload = JsonUtil.convertObjectToJson(dataRequestPayload);
         if (!payload.has(CommonConstants.ACCOUNT) || !payload.has(CommonConstants.INSTRUCTED_AMOUNT)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.MANDATORY_ELEMENTS_MISSING));
         }
@@ -99,7 +101,7 @@ public class FundsConfirmationConsentValidationHandler implements ConsentValidat
             log.debug(String.format("[%s] Validating the addressed account against the consent", requestId));
         }
         if (!isAddressedAccountConsented(payload.getJSONObject(CommonConstants.ACCOUNT), consentResource)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.NO_VALID_ACCOUNTS_FOR_CONSENT));
         }
@@ -120,7 +122,7 @@ public class FundsConfirmationConsentValidationHandler implements ConsentValidat
         if (!ConsentValidationUtil.hasAnyActiveMappingResource(resources)) {
             return false;
         }
-        if (!ConfigurationConstants.COF_ACCOUNT_ID_VALIDATION_ENABLED) {
+        if (!ExtensionConfiguration.isCofAccountIdValidationEnabled()) {
             return true;
         }
         return ConsentValidationUtil.isAccountReferenceMapped(accountRefObject, resources.get(0));

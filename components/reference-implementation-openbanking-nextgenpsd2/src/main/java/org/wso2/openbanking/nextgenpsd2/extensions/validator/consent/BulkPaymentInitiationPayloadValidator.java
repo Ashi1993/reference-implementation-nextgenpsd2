@@ -42,7 +42,7 @@ public class BulkPaymentInitiationPayloadValidator implements
 
         // Cannot have both date and time
         if (payload.getRequestedExecutionDate() != null && payload.getRequestedExecutionTime() != null) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.EXECUTION_DATE_TIME_ERROR));
             return false;
         }
@@ -55,7 +55,7 @@ public class BulkPaymentInitiationPayloadValidator implements
                 }
                 for (String forbiddenElement : CommonConstants.FORBIDDEN_BULK_ENTRY_ELEMENTS) {
                     if (entry.getAdditionalProperties().containsKey(forbiddenElement)) {
-                        CommonConsentValidationUtil.setConstrainViolation(context, CommonConsentValidationUtil
+                        CommonConsentValidationUtil.setConstraintViolation(context, CommonConsentValidationUtil
                                 .buildViolationMessage(ErrorConstants.FORBIDDEN_BULK_ENTRY_ELEMENT));
                         return false;
                     }

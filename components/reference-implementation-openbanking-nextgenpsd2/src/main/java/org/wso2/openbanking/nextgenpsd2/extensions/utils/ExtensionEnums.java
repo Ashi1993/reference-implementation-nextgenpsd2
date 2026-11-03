@@ -20,11 +20,41 @@ package org.wso2.openbanking.nextgenpsd2.extensions.utils;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * Class encapsulating all nextGenPSD2 specification specified enums.
  */
-public class ExtensionEnums {
+public final class ExtensionEnums {
+
+    private ExtensionEnums() {
+    }
+
+    /**
+     * Returns the constant of an enum that carries the given value, which is the value the constants of this
+     * class report through their toString.
+     *
+     * @param enumType class of the enum to read the value as
+     * @param value    value to read
+     * @param <T>      type of the enum to read the value as
+     * @return the constant carrying the value
+     * @throws IllegalArgumentException if the value is blank or is not carried by a constant of the enum
+     */
+    private static <T extends Enum<T>> T fromValue(Class<T> enumType, String value) {
+
+        if (StringUtils.isBlank(value)) {
+            throw new IllegalArgumentException("Value cannot be null or empty");
+        }
+
+        for (T constant : enumType.getEnumConstants()) {
+            if (constant.toString().equals(value)) {
+                return constant;
+            }
+        }
+        throw new IllegalArgumentException("Unknown value: " + value);
+    }
 
     /**
      * Auth Type enum.
@@ -34,7 +64,7 @@ public class ExtensionEnums {
         AUTHORISATION("authorisation"),
         CANCELLATION("cancellation");
 
-        private String value;
+        private final String value;
 
         AuthTypeEnum(String value) {
             this.value = value;
@@ -45,17 +75,7 @@ public class ExtensionEnums {
         }
 
         public static AuthTypeEnum fromValue(String text) {
-
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (AuthTypeEnum b : AuthTypeEnum.values()) {
-                if (text.equals(String.valueOf(b.value))) {
-                    return b;
-                }
-            }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return ExtensionEnums.fromValue(AuthTypeEnum.class, text);
         }
 
     }
@@ -69,7 +89,7 @@ public class ExtensionEnums {
         BALANCES("balances"),
         TRANSACTIONS("transactions");
 
-        private String value;
+        private final String value;
 
         AccessMethodEnum(String value) {
             this.value = value;
@@ -80,17 +100,7 @@ public class ExtensionEnums {
         }
 
         public static AccessMethodEnum fromValue(String text) {
-
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (AccessMethodEnum b : AccessMethodEnum.values()) {
-                if (text.equals(String.valueOf(b.value))) {
-                    return b;
-                }
-            }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return ExtensionEnums.fromValue(AccessMethodEnum.class, text);
         }
 
     }
@@ -108,7 +118,7 @@ public class ExtensionEnums {
         EXPIRED("expired"),
         TERMINATED_BY_TPP("terminatedByTpp");
 
-        private String value;
+        private final String value;
 
         ConsentStatusEnum(String value) {
             this.value = value;
@@ -119,17 +129,7 @@ public class ExtensionEnums {
         }
 
         public static ConsentStatusEnum fromValue(String text) {
-
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (ConsentStatusEnum b : ConsentStatusEnum.values()) {
-                if (text.equals(String.valueOf(b.value))) {
-                    return b;
-                }
-            }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return ExtensionEnums.fromValue(ConsentStatusEnum.class, text);
         }
 
     }
@@ -145,7 +145,14 @@ public class ExtensionEnums {
         PERIODIC_PAYMENTS("periodic-payments"),
         FUNDS_CONFIRMATION("funds-confirmations");
 
-        private String value;
+        /**
+         * The consent types a payment is initiated under. A payment consent carries a transaction status
+         * rather than a consent status, and is addressed on the path of its payment service.
+         */
+        private static final Set<ConsentTypeEnum> PAYMENT_TYPES =
+                Collections.unmodifiableSet(EnumSet.of(PAYMENTS, BULK_PAYMENTS, PERIODIC_PAYMENTS));
+
+        private final String value;
 
         ConsentTypeEnum(String value) {
             this.value = value;
@@ -155,18 +162,24 @@ public class ExtensionEnums {
             return String.valueOf(value);
         }
 
-        public static ConsentTypeEnum fromValue(String text) {
+        /**
+         * Checks whether a consent type is one of the payment consent types.
+         *
+         * @param consentType consent type to check
+         * @return true if a payment is initiated under the consent type
+         */
+        public static boolean isPaymentType(String consentType) {
 
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (ConsentTypeEnum b : ConsentTypeEnum.values()) {
-                if (text.equals(String.valueOf(b.value))) {
-                    return b;
+            for (ConsentTypeEnum paymentType : PAYMENT_TYPES) {
+                if (paymentType.toString().equals(consentType)) {
+                    return true;
                 }
             }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return false;
+        }
+
+        public static ConsentTypeEnum fromValue(String text) {
+            return ExtensionEnums.fromValue(ConsentTypeEnum.class, text);
         }
 
     }
@@ -182,7 +195,7 @@ public class ExtensionEnums {
         BANK_OFFERED("bankOffered"),
         DEDICATED_ACCOUNTS("dedicatedAccounts");
 
-        private String value;
+        private final String value;
 
         PermissionEnum(String value) {
             this.value = value;
@@ -193,17 +206,7 @@ public class ExtensionEnums {
         }
 
         public static PermissionEnum fromValue(String text) {
-
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (PermissionEnum b : PermissionEnum.values()) {
-                if (text.equals(String.valueOf(b.value))) {
-                    return b;
-                }
-            }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return ExtensionEnums.fromValue(PermissionEnum.class, text);
         }
 
     }
@@ -217,7 +220,7 @@ public class ExtensionEnums {
         DECOUPLED("DECOUPLED"),
         EMBEDDED("EMBEDDED");
 
-        private String value;
+        private final String value;
 
         ScaApproachEnum(String value) {
             this.value = value;
@@ -228,17 +231,7 @@ public class ExtensionEnums {
         }
 
         public static ScaApproachEnum fromValue(String text) {
-
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (ScaApproachEnum b : ScaApproachEnum.values()) {
-                if (text.equals(String.valueOf(b.value))) {
-                    return b;
-                }
-            }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return ExtensionEnums.fromValue(ScaApproachEnum.class, text);
         }
 
     }
@@ -258,7 +251,7 @@ public class ExtensionEnums {
         FAILED("failed"),
         EXEMPTED("exempted");
 
-        private String value;
+        private final String value;
 
         ScaStatusEnum(String value) {
             this.value = value;
@@ -269,17 +262,7 @@ public class ExtensionEnums {
         }
 
         public static ScaStatusEnum fromValue(String text) {
-
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (ScaStatusEnum b : ScaStatusEnum.values()) {
-                if (text.equals(String.valueOf(b.value))) {
-                    return b;
-                }
-            }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return ExtensionEnums.fromValue(ScaStatusEnum.class, text);
         }
 
     }
@@ -317,7 +300,7 @@ public class ExtensionEnums {
         // Partially Accepted Technical Correct in cases of multi level SCA.
         PATC("PartiallyAcceptedTechnicalCorrect");
 
-        private String value;
+        private final String value;
 
         TransactionStatusEnum(String value) {
 
@@ -325,17 +308,7 @@ public class ExtensionEnums {
         }
 
         public static TransactionStatusEnum fromValue(String text) {
-
-            if (StringUtils.isBlank(text)) {
-                throw new IllegalArgumentException("Value cannot be null or empty");
-            }
-
-            for (TransactionStatusEnum statusEnum : TransactionStatusEnum.values()) {
-                if (String.valueOf(statusEnum.value).equals(text)) {
-                    return statusEnum;
-                }
-            }
-            throw new IllegalArgumentException("Unknown value: " + text);
+            return ExtensionEnums.fromValue(TransactionStatusEnum.class, text);
         }
 
         public String toString() {

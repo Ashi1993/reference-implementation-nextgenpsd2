@@ -26,7 +26,9 @@ import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHan
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PreProcessConsentCreationRequestBody;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePreProcessConsentCreation;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentHandlerFactory;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.HeaderUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -52,8 +54,8 @@ public class PreProcessConsentCreationApiImpl {
         try {
             // Validate X-request-ID header
             // Enable forwarding of the specific header in accelerator configurations
-            CommonConsentValidationUtil.validateRequestIdentificationHeader(requestBody.getData().getRequestHeaders());
-            xRequestId = CommonConsentValidationUtil.getXRequestId(requestBody.getData().getRequestHeaders());
+            HeaderUtil.validateRequestIdentificationHeader(requestBody.getData().getRequestHeaders());
+            xRequestId = HeaderUtil.getXRequestId(requestBody.getData().getRequestHeaders());
 
             // Validate consent initiation data format
             CommonConsentValidationUtil.validatePayloadFormat(requestBody);
@@ -62,8 +64,8 @@ public class PreProcessConsentCreationApiImpl {
 
         } catch (ValidationFailureException e) {
             return ExtensionResponseUtil.buildErrorResponse(log,
-                    String.format("[%s] Validation failed for consent creation. Returning failed response.",
-                            requestId), e, Response.Status.OK, e.toJsonString(), xRequestId);
+                    String.format("[%s] Validation failed for consent creation. Returning failed response.", requestId),
+                    e, Response.Status.OK, e.toJsonString(), xRequestId);
         }  catch (ExtensionException e) {
             return ExtensionResponseUtil.buildErrorResponse(log,
                     String.format("[%s] An error occurred creating consent.", requestId), e, e.getStatus(),
@@ -72,7 +74,8 @@ public class PreProcessConsentCreationApiImpl {
     }
 
     /**
-     * Validated the consent pau;load and creates the consent using the initiation handler matching the consent type of the request.
+     * Validates the consent payload and creates the consent using the initiation handler matching the consent
+     * type of the request.
      *
      * @param requestBody request body from pre-process consent creation request
      * @return consent creation response produced by the handler
@@ -82,7 +85,7 @@ public class PreProcessConsentCreationApiImpl {
     private static SuccessResponsePreProcessConsentCreation validateAndCreateConsent(
             PreProcessConsentCreationRequestBody requestBody) throws ExtensionException, ValidationFailureException {
 
-        ConsentInitiationHandler consentInitiationHandler = CommonConsentValidationUtil
+        ConsentInitiationHandler consentInitiationHandler = ConsentHandlerFactory
                 .getConsentInitiationHandler(requestBody.getData().getConsentResourcePath());
 
         return consentInitiationHandler.handleCreation(requestBody);

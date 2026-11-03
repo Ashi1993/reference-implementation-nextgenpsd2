@@ -32,7 +32,9 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponse
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePersistAuthorizedConsentData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.UserGrantedData;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentHandlerFactory;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.JsonUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.PaymentConsentUtil;
 
 import javax.ws.rs.core.Response;
@@ -70,8 +72,8 @@ public class PersistAuthorizedConsentApiImpl {
             // The failure is carried back to the PSU through the redirect URL, thus returned with an OK status
             e.setResponseId(requestId);
             return ExtensionResponseUtil.buildErrorResponse(log,
-                    String.format("[%s] Authorization persistence failed. Redirecting to redirect URL with error "
-                            + "description", requestId), e, Response.Status.OK, e.toJsonString(), null);
+                    String.format("[%s] Authorization persistence failed. Redirecting to redirect URL with "
+                            + "error description", requestId), e, Response.Status.OK, e.toJsonString(), null);
         } catch (ExtensionException e) {
             return ExtensionResponseUtil.buildErrorResponse(log,
                     String.format("[%s] An error occurred persisting authorized consent.", requestId), e,
@@ -89,7 +91,7 @@ public class PersistAuthorizedConsentApiImpl {
     private static StoredAuthorization extractAuthorizingResource(PersistAuthorizedConsent persistData)
             throws ExtensionException {
         UserGrantedData userGrantedData = persistData.getUserGrantedData();
-        JSONObject retrievalMetadata = CommonConsentValidationUtil
+        JSONObject retrievalMetadata = JsonUtil
                 .convertObjectToJson(userGrantedData.getAuthorizedResources().getMetadata());
 
         return CommonConsentValidationUtil.extractAuthorizingResource(retrievalMetadata);
@@ -109,7 +111,7 @@ public class PersistAuthorizedConsentApiImpl {
             throws ExtensionException, AuthorizationFailureException {
         String consentType = requestBody.getData().getConsentResource().getType();
         ConsentAuthorizationHandler authorizationHandler =
-                CommonConsentValidationUtil.getAuthorizationHandler(consentType);
+                ConsentHandlerFactory.getAuthorizationHandler(consentType);
 
         SuccessResponsePersistAuthorizedConsentData responseData = new SuccessResponsePersistAuthorizedConsentData();
         responseData.setConsentResource(authorizationHandler.getAmendedConsentResource(requestBody,

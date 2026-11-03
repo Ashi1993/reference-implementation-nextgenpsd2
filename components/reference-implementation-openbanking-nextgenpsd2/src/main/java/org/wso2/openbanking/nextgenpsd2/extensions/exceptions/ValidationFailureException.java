@@ -21,46 +21,38 @@ package org.wso2.openbanking.nextgenpsd2.extensions.exceptions;
 import org.json.JSONObject;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorUtil;
 
+import javax.ws.rs.core.Response;
+
 /**
  * Exception class for success responses carrying FailedResponse objects.
+ * <p>
+ * A validation failure is reported to the accelerator as a successful call carrying an error payload, so the
+ * status it carries is the status of that payload rather than of the response it is returned in.
  */
 public class ValidationFailureException extends Exception {
 
-    /**
-     * Error response code enums.
-     */
-    public enum ErrorCode {
-        BAD_REQUEST(400),
-        UNAUTHORIZED(401),
-        FORBIDDEN(403),
-        NOT_FOUND(404),
-        METHOD_NOT_ALLOWED(405),
-        INTERNAL_SERVER_ERROR(500);
-
-        private final int code;
-
-        ErrorCode(int code) {
-            this.code = code;
-        }
-
-        public int getCode() {
-            return code;
-        }
-    }
-
-    private final ErrorCode errorCode;
+    private final Response.Status errorStatus;
     private final JSONObject data;
 
-    public ValidationFailureException(ErrorCode errorCode, JSONObject data) {
+    public ValidationFailureException(Response.Status errorStatus, JSONObject data) {
         super(ErrorUtil.getErrorMessage(data));
-        this.errorCode = errorCode;
+        this.errorStatus = errorStatus;
         this.data = data;
     }
 
-    public ValidationFailureException(ErrorCode errorCode, JSONObject data, Throwable e) {
+    public ValidationFailureException(Response.Status errorStatus, JSONObject data, Throwable e) {
         super(ErrorUtil.getErrorMessage(data), e);
-        this.errorCode = errorCode;
+        this.errorStatus = errorStatus;
         this.data = data;
+    }
+
+    /**
+     * Getter for the status the validation failure is reported under.
+     *
+     * @return status of the validation failure
+     */
+    public Response.Status getStatus() {
+        return this.errorStatus;
     }
 
     /**
@@ -68,7 +60,7 @@ public class ValidationFailureException extends Exception {
      * @return formatted error message as a JSONObject
      */
     public JSONObject toJson() {
-        return ErrorUtil.getFormattedFailedResponse(this.errorCode.getCode(), this.data);
+        return ErrorUtil.getFormattedFailedResponse(this.errorStatus.getStatusCode(), this.data);
     }
 
     /**

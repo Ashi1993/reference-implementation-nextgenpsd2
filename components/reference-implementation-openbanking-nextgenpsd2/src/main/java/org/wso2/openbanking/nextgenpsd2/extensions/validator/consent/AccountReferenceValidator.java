@@ -19,7 +19,7 @@
 package org.wso2.openbanking.nextgenpsd2.extensions.validator.consent;
 
 import org.apache.commons.lang3.StringUtils;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.AccountReference;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
@@ -42,17 +42,17 @@ public class AccountReferenceValidator implements ConstraintValidator<ValidAccou
         Map<String, String> props = ref.getAdditionalProperties();
 
         if (props == null || props.isEmpty()) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.ACCOUNT_REFERENCE_OBJECT_MISSING));
             return false;
         }
 
         Set<String> keys = props.keySet();
 
-        List<String> supportedKeys = ConfigurationConstants.SUPPORTED_ACC_REFERNCE_TYPES;
+        List<String> supportedKeys = ExtensionConfiguration.getSupportedAccountReferenceTypes();
         if (keys.size() == 1) {
             if (!supportedKeys.contains(keys.iterator().next())) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.INVALID_ACCOUNT_REFERENCE));
                 return false;
             }
@@ -60,13 +60,13 @@ public class AccountReferenceValidator implements ConstraintValidator<ValidAccou
             boolean hasCurrency = keys.contains(CommonConstants.CURRENCY);
             boolean hasRefType = keys.stream().anyMatch(supportedKeys::contains);
             if (!hasCurrency || !hasRefType) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil
                                 .buildViolationMessage(ErrorConstants.UNRECOGNIZED_ATTRIBUTES_ACCOUNT_REFERENCE));
                 return false;
             }
         } else {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.ACCOUNT_REFERENCE_OBJECT_MISSING));
             return false;
         }
@@ -74,7 +74,7 @@ public class AccountReferenceValidator implements ConstraintValidator<ValidAccou
         // Ensure reference value is not blank
         for (String key : keys) {
             if (!CommonConstants.CURRENCY.equals(key) && StringUtils.isBlank(props.get(key))) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.ACCOUNT_REFERENCE_IS_EMPTY));
                 return false;
             }
@@ -84,7 +84,7 @@ public class AccountReferenceValidator implements ConstraintValidator<ValidAccou
         for (Map.Entry<String, String> entry : props.entrySet()) {
             String formatError = validateElementFormat(entry.getKey(), entry.getValue());
             if (formatError != null) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil.buildViolationMessage(formatError));
                 return false;
             }

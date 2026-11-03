@@ -27,8 +27,8 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.ConsentAccessContext;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.common.SuccessResponse;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.StoredDetailedConsentResourceData;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.ValidateConsentAccessRequestBody;
-import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentHandlerFactory;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentValidationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
 
@@ -100,7 +100,7 @@ public class ValidateConsentAccessApiImpl {
         }
 
         // Apply the consent type specific access rules
-        ConsentValidationHandler consentValidationHandler = CommonConsentValidationUtil
+        ConsentValidationHandler consentValidationHandler = ConsentHandlerFactory
                 .getConsentValidationHandler(consentResource.getType());
 
         consentValidationHandler.validateConsentAccess(validateConsentAccessRequestBody, context);

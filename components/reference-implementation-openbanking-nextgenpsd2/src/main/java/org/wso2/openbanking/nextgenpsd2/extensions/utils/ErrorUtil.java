@@ -35,7 +35,10 @@ import java.util.List;
 /**
  * Utility class for building and processing error objects.
  */
-public class ErrorUtil {
+public final class ErrorUtil {
+
+    private ErrorUtil() {
+    }
     /**
      * Method to get ErrorResponse object for error.
      * @param errorMessage error message
@@ -89,7 +92,7 @@ public class ErrorUtil {
         tppMessagesList.add(tppMessage);
         tppMessages.setTppMessages(tppMessagesList);
 
-        return CommonConsentValidationUtil.convertObjectToJson(tppMessages);
+        return JsonUtil.convertObjectToJson(tppMessages);
     }
 
     /**
@@ -125,7 +128,7 @@ public class ErrorUtil {
         TPPMessages tppMessages = new TPPMessages();
         tppMessages.setTppMessages(tppErrorMessages);
 
-        return CommonConsentValidationUtil.convertObjectToJson(tppMessages);
+        return JsonUtil.convertObjectToJson(tppMessages);
     }
 
     /**

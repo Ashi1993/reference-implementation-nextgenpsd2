@@ -22,7 +22,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentValidationHandler;
@@ -39,6 +39,8 @@ import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionEnums;
 
 import java.util.List;
+
+import javax.ws.rs.core.Response;
 
 /**
  * Validates data access requests against an account consent.
@@ -61,7 +63,7 @@ public class AccountConsentValidationHandler implements ConsentValidationHandler
         if (isConsentExpired(consentResource)) {
             // The accelerator owns the status transition to expired, either through the periodical expiration
             // job or through a scheduled consent expiry. The extension only denies access.
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_EXPIRED, ErrorConstants.CONSENT_EXPIRED));
         }
@@ -71,14 +73,14 @@ public class AccountConsentValidationHandler implements ConsentValidationHandler
         }
         if (!StringUtils.equals(consentResource.getStatus(),
                 ExtensionEnums.ConsentStatusEnum.VALID.toString())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_UNKNOWN, ErrorConstants.CONSENT_INVALID_STATE));
         }
 
         List<StoredResource> resources = ConsentValidationUtil.getStoredResources(consentResource);
         if (!ConsentValidationUtil.hasAnyActiveMappingResource(resources)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.NO_VALID_ACCOUNTS_FOR_CONSENT));
         }
@@ -112,22 +114,22 @@ public class AccountConsentValidationHandler implements ConsentValidationHandler
         }
 
         if (StringUtils.isBlank(accountId)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.ACCOUNT_ID_CANNOT_BE_EMPTY));
         }
 
         boolean isCardAccountRequest = pathElements.contains(CommonConstants.CARD_ACCOUNTS);
-        if (ConfigurationConstants.ACCOUNT_ID_VALIDATION_ENABLED && !isCardAccountRequest) {
+        if (ExtensionConfiguration.isAccountIdValidationEnabled() && !isCardAccountRequest) {
             if (!ConsentValidationUtil.hasValidPermissionsForAccountId(accountId, accessMethod, resources)) {
-                throw new ValidationFailureException(ValidationFailureException.ErrorCode.NOT_FOUND,
+                throw new ValidationFailureException(Response.Status.NOT_FOUND,
                         ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                                 TPPMessage.CodeEnum.RESOURCE_UNKNOWN_404,
                                 ErrorConstants.NO_MATCHING_PERMISSIONS_FOR_ACCOUNT_ID));
             }
         } else {
             if (!ConsentValidationUtil.hasValidPermissionsForConsentId(accessMethod, resources)) {
-                throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+                throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                         ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                                 TPPMessage.CodeEnum.CONSENT_INVALID,
                                 ErrorConstants.NO_MATCHING_PERMISSIONS_FOR_ACCOUNT_ID));

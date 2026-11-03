@@ -25,15 +25,11 @@ import java.util.List;
 /**
  * Common constants.
  */
-public class CommonConstants {
+public final class CommonConstants {
 
-    public static final String SCA_TYPE = "Type";
-    public static final String SCA_VERSION = "Version";
-    public static final String SCA_ID = "Id";
-    public static final String SCA_NAME = "Name";
-    public static final String SCA_MAPPED_APPROACH = "MappedApproach";
-    public static final String SCA_DESCRIPTION = "Description";
-    public static final String SCA_DEFAULT = "Default";
+    private CommonConstants() {
+    }
+
     public static final String X_WSO2_CLIENT_ID_KEY = "x-wso2-client-id";
     public static final String CLIENT_ID_PARAM = "client_id";
     public static final String SCOPE_PARAM = "scope";
@@ -45,6 +41,10 @@ public class CommonConstants {
     public static final String CONSENT_ID = "consentId";
     public static final String PAYMENT_ID = "paymentId";
     public static final String DELIMITER = ":";
+
+    // Operations of the banking backend a payment resource is submitted for
+    public static final String PAYMENT_SUBMISSION = "submit";
+    public static final String PAYMENT_CANCELLATION = "cancel";
     public static final String CURRENCY = "currency";
     public static final String IS_DEFAULT = "isDefault";
     public static final String EXPLICIT_AUTHORISATION_PATH_END = "authorisations";

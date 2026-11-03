@@ -18,7 +18,7 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.validator.consent;
 
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.SinglePaymentInitiationPayload;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.TPPMessage;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
@@ -37,7 +37,7 @@ import javax.validation.ConstraintValidatorContext;
 public class SinglePaymentInitiationPayloadValidator implements
         ConstraintValidator<ValidSinglePaymentInitiationPayload, SinglePaymentInitiationPayload> {
 
-    private final long maxDays = Long.parseLong(ConfigurationConstants.MAX_FUTURE_PAYMENT_DAYS);
+    private final long maxDays = ExtensionConfiguration.getMaxFuturePaymentDays();
 
     @Override
     public boolean isValid(SinglePaymentInitiationPayload payload, ConstraintValidatorContext context) {
@@ -52,7 +52,7 @@ public class SinglePaymentInitiationPayloadValidator implements
 
             // Checks if execution date is in future
             if (!requestedExecutionDate.isAfter(today)) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil.buildViolationMessage(TPPMessage.CodeEnum.EXECUTION_DATE_INVALID,
                                 ErrorConstants.EXECUTION_DATE_NOT_FUTURE));
                 return false;
@@ -60,7 +60,7 @@ public class SinglePaymentInitiationPayloadValidator implements
 
             // Checks if it exceeds allowed maximum number of days into the future
             if (ChronoUnit.DAYS.between(today.plusDays(maxDays), requestedExecutionDate) > 0) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil.buildViolationMessage(TPPMessage.CodeEnum.EXECUTION_DATE_INVALID,
                                 ErrorConstants.PAYMENT_EXECUTION_DATE_EXCEEDED));
                 return false;

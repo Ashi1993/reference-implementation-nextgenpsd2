@@ -32,9 +32,9 @@ import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponse
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.SuccessResponsePopulateConsentAuthorizeScreenData;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentAuthorizationUtil;
-import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
-import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentHandlerFactory;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionResponseUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.JsonUtil;
 
 import javax.ws.rs.core.Response;
 
@@ -57,10 +57,10 @@ public class PopulateConsentAuthorizeScreenApiImpl {
         StoredDetailedConsentResourceData consentResource = data.getConsentResource();
 
         try {
-            JSONObject queryParams = CommonConsentValidationUtil.convertObjectToJson(data.getRequestParameters());
+            JSONObject queryParams = JsonUtil.convertObjectToJson(data.getRequestParameters());
 
             // Verify client
-            CommonConsentValidationUtil.validateClient(consentResource, queryParams);
+            CommonConsentValidationUtil.validateAuthorizingClient(consentResource, queryParams);
 
             // Validate consent type with consent scopes
             CommonConsentValidationUtil.validateScope(requestId, queryParams, consentResource.getType());
@@ -70,17 +70,8 @@ public class PopulateConsentAuthorizeScreenApiImpl {
                     .getAuthorizableResource(requestId, consentResource.getAuthorizations(), data.getUserId(),
                             consentResource);
 
-            ConsentAuthorizationHandler authorizationHandler = CommonConsentValidationUtil.getAuthorizationHandler(
+            ConsentAuthorizationHandler authorizationHandler = ConsentHandlerFactory.getAuthorizationHandler(
                     consentResource.getType());
-
-            if (authorizationHandler == null) {
-                // Should be unreachable since only consent types in ConsentTypes enum are used at initiation
-                return ExtensionResponseUtil.buildErrorResponse(log,
-                        String.format("[%s] %s", requestId, ErrorConstants.INITIATED_CONSENT_TYPE_INVALID), null,
-                        Response.Status.BAD_REQUEST,
-                        ErrorUtil.getFormattedAuthorizationFailureException(requestId,
-                                ErrorConstants.INITIATED_CONSENT_TYPE_INVALID, null).toString(), null);
-            }
 
             return ExtensionResponseUtil.buildSerializedSuccessResponse(
                     buildAuthorizeScreenResponse(requestId, data, authorizationHandler, unauthorizedObj));
@@ -89,8 +80,8 @@ public class PopulateConsentAuthorizeScreenApiImpl {
             // The failure is carried back to the PSU through the redirect URL, thus returned with an OK status
             e.setResponseId(requestId);
             return ExtensionResponseUtil.buildErrorResponse(log,
-                    String.format("[%s] Authorization retrieval failed. Redirecting to redirect URL with error "
-                            + "description", requestId), e, Response.Status.OK, e.toJsonString(), null);
+                    String.format("[%s] Authorization retrieval failed. Redirecting to redirect URL with "
+                            + "error description", requestId), e, Response.Status.OK, e.toJsonString(), null);
         } catch (ExtensionException e) {
             return ExtensionResponseUtil.buildErrorResponse(log,
                     String.format("[%s] An error occurred populating consent authorize screen.", requestId), e,

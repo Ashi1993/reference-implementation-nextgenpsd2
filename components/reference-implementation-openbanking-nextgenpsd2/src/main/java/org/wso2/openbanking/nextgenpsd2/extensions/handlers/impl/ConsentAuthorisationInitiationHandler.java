@@ -52,7 +52,7 @@ public class ConsentAuthorisationInitiationHandler implements ConsentInitiationH
     public SuccessResponsePreProcessConsentCreation handleCreation(PreProcessConsentCreationRequestBody requestBody)
             throws ValidationFailureException, ExtensionException {
         // Throws an error since creating auth object for an existing consent is not supported
-        throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+        throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                 ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                         TPPMessage.CodeEnum.SERVICE_INVALID_405, ErrorConstants.AUTH_CREATION_NOT_SUPPORTED));
     }
@@ -72,7 +72,7 @@ public class ConsentAuthorisationInitiationHandler implements ConsentInitiationH
     public SuccessResponseForResponseAlternation handleRetrieval(PreProcessConsentRequestBody requestBody)
             throws ValidationFailureException, ExtensionException {
         // Throws an error since auth resources for a consent cannot be retrieved through consent creation
-        throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+        throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                 ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                         TPPMessage.CodeEnum.SERVICE_INVALID_405, ErrorConstants.DELETE_NOT_SUPPORTED));
     }
@@ -91,7 +91,7 @@ public class ConsentAuthorisationInitiationHandler implements ConsentInitiationH
     public SuccessResponseConsentRevocation handleRevocation(PreProcessConsentRequestBody requestBody)
             throws ValidationFailureException, ExtensionException {
         // Throws an error since auth resources for a consent cannot be retrieved through consent creation
-        throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+        throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                 ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                         TPPMessage.CodeEnum.SERVICE_INVALID_405, ErrorConstants.AUTH_CREATION_NOT_SUPPORTED));
     }
@@ -110,7 +110,7 @@ public class ConsentAuthorisationInitiationHandler implements ConsentInitiationH
     @Override
     public SuccessResponseForResponseAlternation enrichCreationResponse(EnrichConsentCreationRequestBody requestBody)
             throws ExtensionException {
-        throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
+        throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
                 ErrorConstants.AUTH_CREATION_NOT_SUPPORTED);
     }
 }

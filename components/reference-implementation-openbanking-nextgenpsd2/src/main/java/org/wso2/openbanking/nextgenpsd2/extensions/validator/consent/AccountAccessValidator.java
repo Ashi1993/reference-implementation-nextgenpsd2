@@ -33,7 +33,7 @@ public class AccountAccessValidator implements ConstraintValidator<ValidAccountA
 
         // At least one must be present
         if (!hasArrays && !hasPermissions) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil
                             .buildViolationMessage(ErrorConstants.ACCESS_OBJECT_MANDATORY_ELEMENTS_MISSING));
             return false;
@@ -41,14 +41,14 @@ public class AccountAccessValidator implements ConstraintValidator<ValidAccountA
 
         // Permissions and arrays must not coexist
         if (hasArrays && hasPermissions) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.INVALID_PERMISSION));
             return false;
         }
 
         // Additional info only with at least one array
         if (access.getAdditionalInformation() != null && !hasArrays) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil
                             .buildViolationMessage(ErrorConstants.INVALID_USE_OF_ADDITIONAL_INFO_ATTRIBUTE));
             return false;
@@ -58,21 +58,21 @@ public class AccountAccessValidator implements ConstraintValidator<ValidAccountA
         if (hasPermissions) {
             if (access.getAvailableAccounts() != null) {
                 if (access.getAvailableAccountsWithBalance() != null || access.getAllPsd2() != null) {
-                    CommonConsentValidationUtil.setConstrainViolation(context,
+                    CommonConsentValidationUtil.setConstraintViolation(context,
                             CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.INVALID_PERMISSION));
                     return false;
                 }
             }
             if (access.getAvailableAccountsWithBalance() != null) {
                 if (access.getAvailableAccounts() != null || access.getAllPsd2() != null) {
-                    CommonConsentValidationUtil.setConstrainViolation(context,
+                    CommonConsentValidationUtil.setConstraintViolation(context,
                             CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.INVALID_PERMISSION));
                     return false;
                 }
             }
             if (access.getAllPsd2() != null) {
                 if (access.getAvailableAccounts() != null || access.getAvailableAccountsWithBalance() != null) {
-                    CommonConsentValidationUtil.setConstrainViolation(context,
+                    CommonConsentValidationUtil.setConstraintViolation(context,
                             CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.INVALID_PERMISSION));
                     return false;
                 }
@@ -88,7 +88,7 @@ public class AccountAccessValidator implements ConstraintValidator<ValidAccountA
         long nonEmptyCount = arrays.stream().filter(arr -> arr != null && !arr.isEmpty()).count();
 
         if (emptyCount > 0 && nonEmptyCount > 0) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil.buildViolationMessage(ErrorConstants.INVALID_PERMISSION));
             return false;
         }
@@ -129,7 +129,7 @@ public class AccountAccessValidator implements ConstraintValidator<ValidAccountA
 
         // Detailed accounts are not referenced, so the additional information arrays have to be empty as well
         if (!hasReferencedAccount) {
-            CommonConsentValidationUtil.setConstrainViolation(context,
+            CommonConsentValidationUtil.setConstraintViolation(context,
                     CommonConsentValidationUtil
                             .buildViolationMessage(ErrorConstants.ADDITIONAL_INFO_ARRAY_NOT_EMPTY));
             return false;
@@ -145,7 +145,7 @@ public class AccountAccessValidator implements ConstraintValidator<ValidAccountA
 
         for (AccountReference reference : additionalReferences) {
             if (!addressedAccounts.contains(reference.getAdditionalProperties())) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil
                                 .buildViolationMessage(ErrorConstants.ADDITIONAL_INFO_ACCOUNT_NOT_ADDRESSED));
                 return false;

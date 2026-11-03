@@ -46,7 +46,7 @@ public class FundsConfirmationInitiationPayloadValidator implements
         // If card expiry date is present, validate that it's in the future
         if (payload.getCardExpiryDate() != null) {
             if (payload.getCardExpiryDate().isBefore(LocalDate.now(ZoneOffset.UTC))) {
-                CommonConsentValidationUtil.setConstrainViolation(context,
+                CommonConsentValidationUtil.setConstraintViolation(context,
                         CommonConsentValidationUtil.buildViolationMessage(
                                 TPPMessage.CodeEnum.TIMESTAMP_INVALID,
                                 String.format("The provided card expiry date %s is a past date",

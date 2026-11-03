@@ -41,15 +41,23 @@ public class IssueRefreshTokenApiImpl {
         successResponseIssueRefreshToken.setResponseId(issueRefreshTokenRequestBody.getRequestId());
         successResponseIssueRefreshToken.setStatus(SuccessResponseIssueRefreshToken.StatusEnum.SUCCESS);
 
-        SuccessResponseIssueRefreshTokenData successResponseIssueRefreshTokenData =
-                new SuccessResponseIssueRefreshTokenData();
-        successResponseIssueRefreshTokenData.setIssueRefreshToken(true);
-
         long consentValidityPeriod = issueRefreshTokenRequestBody.getData().getConsentValidityPeriod();
         long consentCreatedPeriod = issueRefreshTokenRequestBody.getData().getConsentCreatedTime();
+        long refreshTokenValidityPeriod = consentValidityPeriod - consentCreatedPeriod;
 
-        successResponseIssueRefreshTokenData.setRefreshTokenValidityPeriod(consentValidityPeriod -
-                consentCreatedPeriod);
+        SuccessResponseIssueRefreshTokenData successResponseIssueRefreshTokenData =
+                new SuccessResponseIssueRefreshTokenData();
+
+        // A one off consent carries no validity period, so no refresh token is issued for it. The same holds
+        // for a consent that has already reached the end of its validity period.
+        if (refreshTokenValidityPeriod > 0) {
+            successResponseIssueRefreshTokenData.setIssueRefreshToken(true);
+            successResponseIssueRefreshTokenData.setRefreshTokenValidityPeriod(refreshTokenValidityPeriod);
+        } else {
+            successResponseIssueRefreshTokenData.setIssueRefreshToken(false);
+            successResponseIssueRefreshTokenData.setRefreshTokenValidityPeriod(0L);
+        }
+
         successResponseIssueRefreshToken.setData(successResponseIssueRefreshTokenData);
         return Response.ok().entity(successResponseIssueRefreshToken).build();
     }

@@ -21,7 +21,10 @@ package org.wso2.openbanking.nextgenpsd2.extensions.utils;
 /**
  * Constants related to errors.
  */
-public class ErrorConstants {
+public final class ErrorConstants {
+
+    private ErrorConstants() {
+    }
 
     public static final String CONFIGURATION_BUILD_ERROR = "Error occurred while building the configurations using" +
             " open-banking.xml";
@@ -40,6 +43,10 @@ public class ErrorConstants {
     public static final String DELETE_NOT_SUPPORTED = "The DELETE method is not supported";
     public static final String PUT_NOT_SUPPORTED = "The PUT method is not supported";
     public static final String PATH_INVALID = "Invalid request path";
+
+    // Error codes carried by the error responses returned to the accelerator
+    public static final String INVALID_REQUEST = "invalid_request";
+    public static final String SERVER_ERROR = "server_error";
     public static final String PAYLOAD_FORMAT_ERROR = "Incorrect JSON format in the Request Payload";
     public static final String PAYLOAD_NOT_PRESENT_ERROR = "Request payload is not present";
     public static final String PSU_IP_ADDRESS_MISSING = "The PSU-IP-Address mandatory header is missing in the request";
@@ -88,6 +95,7 @@ public class ErrorConstants {
             "a PSU Authenticated state";
     public static final String INCORRECT_CONSENT_DATA = "Received invalid consent data";
     public static final String ACCOUNTS_NOT_FOUND_FOR_USER = "Provided account references do not exist or not valid";
+    public static final String SHAREABLE_ACCOUNTS_NOT_FOUND = "No shareable accounts found for the user";
 
     // Payments related error messages
     public static final String ACCOUNT_REFERENCE_OBJECT_MISSING = "Account reference object is missing in payload";
@@ -161,6 +169,21 @@ public class ErrorConstants {
             "related data";
     public static final String RESPONSE_CONSTRUCT_ERROR = "Error occurred while constructing response";
     public static final String JSON_PARSE_ERROR = "Error occurred while parsing JSON";
+    public static final String CLIENT_ID_NOT_FOUND = "Organization ID not found for the client";
+    public static final String CONSENT_STATUS_NOT_APPLICABLE =
+            "The consent is not in an applicable status for authorization";
+    public static final String AUTHORIZING_AUTHORIZATION_INVALID =
+            "Authorization resource being authorized is invalid";
+    public static final String RESPONSE_SERIALIZATION_FAILED = "Failed to parse built response object to JSON";
+    public static final String PAYMENT_PRODUCT_NOT_FOUND = "Failed to extract payment product from consent";
+    public static final String EMPTY_ACCESS_OBJECT = "Empty access object retrieved";
+    public static final String SCA_APPROACH_NOT_CONFIGURED = "No SCA approach is configured for the request";
+    public static final String ACCOUNT_REFERENCE_TYPE_UNSUPPORTED =
+            "Authorized account carries no supported account reference type";
+    public static final String SINGLE_ACCOUNT_CONSENT_ACCOUNT_MISSING =
+            "No authorized account retrieved for a consent that requires a single account";
+    public static final String SINGLE_ACCOUNT_CONSENT_MULTIPLE_ACCOUNTS =
+            "Retrieved more than one authorized account for a consent that can have only a single account";
     public static final String BANK_OFFERED_CONSENT_UPDATE_ERROR = "Error while trying to update consent receipt " +
             "with bank offered accounts";
     public static final String CONSENT_ALREADY_DELETED = "The requested consent is already deleted";

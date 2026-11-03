@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import javax.ws.rs.HttpMethod;
+import javax.ws.rs.core.Response;
 
 /**
  * Validates data access requests against a payment consent.
@@ -69,7 +70,7 @@ public class PaymentConsentValidationHandler implements ConsentValidationHandler
         if (StringUtils.equals(HttpMethod.DELETE, context.getHttpMethod())
                 && StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString(),
                 consentResource.getType())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.METHOD_NOT_ALLOWED,
+            throw new ValidationFailureException(Response.Status.METHOD_NOT_ALLOWED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CANCELLATION_INVALID, ErrorConstants.CANCELLATION_NOT_APPLICABLE));
         }
@@ -78,7 +79,7 @@ public class PaymentConsentValidationHandler implements ConsentValidationHandler
             log.debug(String.format("[%s] Checking if payment consent is in an accessible state", requestId));
         }
         if (NON_ACCESSIBLE_STATUSES.contains(currentStatus)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.CONSENT_ALREADY_DELETED));
         }
@@ -90,7 +91,7 @@ public class PaymentConsentValidationHandler implements ConsentValidationHandler
          */
         if (context.hasHttpMethod() && !StringUtils.equals(HttpMethod.DELETE, context.getHttpMethod())
                 && StringUtils.equals(ExtensionEnums.TransactionStatusEnum.RCVD.name(), currentStatus)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_UNKNOWN, ErrorConstants.CONSENT_INVALID_STATE));
         }
@@ -118,7 +119,7 @@ public class PaymentConsentValidationHandler implements ConsentValidationHandler
 
         String pathPaymentId = ConsentValidationUtil.getPaymentIdFromPath(resourcePath);
         if (!StringUtils.equals(pathPaymentId, consentResource.getId())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.FORBIDDEN,
+            throw new ValidationFailureException(Response.Status.FORBIDDEN,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_UNKNOWN_403,
                             ErrorConstants.PAYMENT_ID_CONSENT_ID_MISMATCH));

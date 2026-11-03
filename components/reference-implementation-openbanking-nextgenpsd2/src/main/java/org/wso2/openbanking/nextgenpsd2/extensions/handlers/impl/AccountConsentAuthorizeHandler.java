@@ -18,9 +18,6 @@
 
 package org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.AuthorizationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentAuthorizationHandler;
@@ -40,7 +37,9 @@ import org.wso2.openbanking.nextgenpsd2.extensions.utils.AccountConsentUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConsentValidationUtil;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.CommonConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ConsentAuthorizationUtil;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.ErrorConstants;
 import org.wso2.openbanking.nextgenpsd2.extensions.utils.ExtensionEnums;
+import org.wso2.openbanking.nextgenpsd2.extensions.utils.JsonUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,9 +50,6 @@ import javax.ws.rs.core.Response;
  * Consent handler interface for processing account consent authorization related requests.
  */
 public class AccountConsentAuthorizeHandler implements ConsentAuthorizationHandler {
-    private static final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     /**
      * Return basic consent data for account consents.
@@ -96,7 +92,7 @@ public class AccountConsentAuthorizeHandler implements ConsentAuthorizationHandl
             throws ExtensionException, AuthorizationFailureException {
 
         // Map receipt to initiation payload object
-        AccountInitiationPayload receipt = objectMapper.convertValue(requestData.getConsentResource().getReceipt(),
+        AccountInitiationPayload receipt = JsonUtil.convertValue(requestData.getConsentResource().getReceipt(),
                 AccountInitiationPayload.class);
 
         // Identify requested permission from receipt
@@ -133,7 +129,7 @@ public class AccountConsentAuthorizeHandler implements ConsentAuthorizationHandl
                 AccountConsentUtil.populatePermissionsAndConsumerAccounts(responseData, receipt, userId);
                 break;
             default:
-                throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
+                throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
                         "Unidentified permission found.");
         }
     }

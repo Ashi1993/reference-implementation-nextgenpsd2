@@ -45,21 +45,23 @@ import javax.ws.rs.core.HttpHeaders;
 /**
  * Data retrieval util class.
  */
-public class DataRetrievalUtil {
+public final class DataRetrievalUtil {
+
+    private DataRetrievalUtil() {
+    }
 
     private static final Log log = LogFactory.getLog(DataRetrievalUtil.class);
 
     /**
-     * Returns the account list string after fetching from the bank backend.
+     * Reads the accounts the banking backend returns for a retrieval URL.
      *
-     * @param accountsURL shareable accounts retrieval URL
+     * @param accountsURL accounts retrieval URL
      * @param parameters  URL params
      * @param headers     request headers
-     * @return retrieved accounts string from endpoint
-     *
+     * @return the response of the endpoint, or null if it could not be read
      */
-    public static String getAccountsFromEndpoint(String accountsURL, Map<String, String> parameters,
-                                                 Map<String, String> headers) {
+    private static String readAccountsResponse(String accountsURL, Map<String, String> parameters,
+                                               Map<String, String> headers) {
 
         String retrieveUrl = accountsURL.endsWith("/") ? accountsURL : accountsURL + "/";
         if (!parameters.isEmpty()) {
@@ -146,16 +148,16 @@ public class DataRetrievalUtil {
     }
 
     /**
-     * Get accounts array from endpoint.
+     * Returns the accounts of a user as the banking backend holds them.
      *
      * @param userId      user id
      * @param accountsURL accounts base URL
      * @param parameters  URL parameters
      * @param headers     request headers
-     * @return list of accounts
+     * @return the accounts of the user, or null if they could not be retrieved
      */
-    public static JSONArray getAccountsFromEndpoint(String userId, String accountsURL,
-                                                        Map<String, String> parameters, Map<String, String> headers) {
+    public static JSONArray getUserAccounts(String userId, String accountsURL, Map<String, String> parameters,
+                                            Map<String, String> headers) {
 
         if (!accountsURL.endsWith("/")) {
             accountsURL += "/";
@@ -165,7 +167,7 @@ public class DataRetrievalUtil {
         if (log.isDebugEnabled()) {
             log.debug(String.format("Getting accounts details from backend endpoint %s", accountsURL));
         }
-        String accountData = DataRetrievalUtil.getAccountsFromEndpoint(accountsURL, parameters, headers);
+        String accountData = readAccountsResponse(accountsURL, parameters, headers);
         if (accountData == null) {
             log.error("No account details available");
             return null;

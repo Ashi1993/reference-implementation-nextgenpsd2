@@ -116,6 +116,33 @@ password = "<PASSWORD>"
 
 2. Start the IS server.
 
+## Configuring the Extension
+
+The extension endpoints read their configuration from `nextgenpsd2-extension.properties`, which ships inside
+the web application at `WEB-INF/classes/nextgenpsd2-extension.properties` and documents every setting it
+carries. The defaults point at a locally hosted demo backend and authorization server.
+
+A deployment overrides a setting without rebuilding the web application, in this order of precedence:
+
+1. a JVM system property of the same name, for example `-Dsca.required=false`
+2. an environment variable of the same name in upper case with dots replaced by underscores, for example
+   `SCA_REQUIRED=false`
+3. a properties file holding only the keys to override, named by the `nextgenpsd2.extension.config` system
+   property:
+   ```
+   -Dnextgenpsd2.extension.config=<IS_HOME>/repository/conf/nextgenpsd2-extension.properties
+   ```
+4. the file shipped with the web application
+
+The settings cover the banking backend and authorization server endpoints, the consent initiation limits, the
+API versions of the nextGenPSD2 services, the supported SCA approaches and methods, and how strictly a data
+access request is validated.
+
+> **Note:** `consent.account.id.validation.enabled`, `consent.cof.account.id.validation.enabled` and
+> `consent.access.context.required` are off by default, which is what a deployment against the declared
+> extensions contract requires. Each of them lets through a data access request that a stricter deployment
+> would reject, so turn them on once the accelerator of the deployment is known to send the data the
+> validation needs.
 
 ## Running Tests
 

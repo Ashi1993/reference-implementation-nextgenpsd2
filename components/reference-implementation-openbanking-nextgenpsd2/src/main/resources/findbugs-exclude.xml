@@ -22,4 +22,10 @@
         <!--Suppressing this Security Warning since this endpoint is used for demo purposes.-->
         <Bug pattern="JAXRS_ENDPOINT" />
     </Match>
+    <Match>
+        <!--The configuration file of a deployment is named by a JVM system property, which is set by the
+            operator of the server rather than reached from a request, so the path it carries is trusted.-->
+        <Class name="org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration" />
+        <Bug pattern="PATH_TRAVERSAL_IN" />
+    </Match>
 </FindBugsFilter>

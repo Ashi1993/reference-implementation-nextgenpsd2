@@ -19,36 +19,17 @@
 package org.wso2.openbanking.nextgenpsd2.extensions.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ConfigurationConstants;
+import org.wso2.openbanking.nextgenpsd2.extensions.configurations.ExtensionConfiguration;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.AuthorizationFailureException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ExtensionException;
 import org.wso2.openbanking.nextgenpsd2.extensions.exceptions.ValidationFailureException;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentAuthorizationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentInitiationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.ConsentValidationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.AccountConsentAuthorizeHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.AccountConsentInitiationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.AccountConsentValidationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.ConsentAuthorisationInitiationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.FundsConfirmationConsentAuthorizeHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.FundsConfirmationConsentInitiationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.FundsConfirmationConsentValidationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.PaymentConsentAuthorizeHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.PaymentConsentInitiationHandler;
-import org.wso2.openbanking.nextgenpsd2.extensions.handlers.impl.PaymentConsentValidationHandler;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.AccountReference;
-import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaApproach;
-import org.wso2.openbanking.nextgenpsd2.extensions.model.ScaMethod;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.TPPMessage;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.Account;
 import org.wso2.openbanking.nextgenpsd2.extensions.model.consent.PopulateConsentAuthorizeScreenData;
@@ -69,7 +50,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -83,59 +63,17 @@ import javax.ws.rs.core.Response;
 /**
  * Common utility class for handling consent operations.
  */
-public class CommonConsentValidationUtil {
+public final class CommonConsentValidationUtil {
+
+    private CommonConsentValidationUtil() {
+    }
 
     private static final Log log = LogFactory.getLog(CommonConsentValidationUtil.class);
-    private static final Pattern uuidPattern = Pattern.compile
+    private static final Pattern UUID_PATTERN = Pattern.compile
             ("^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
                     Pattern.CASE_INSENSITIVE);
-    private static final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
-    private static final Validator validator = factory.getValidator();
-
-    /**
-     * This method checks a provided header key is in the header map without considering the case.
-     *
-     * @param headersJson headers map
-     * @param headerKey header key that need to be checked
-     * @return true if present, false otherwise
-     */
-    public static boolean checkCaseIgnoredHeader(String requestId, JSONObject headersJson, String headerKey) {
-
-        if (log.isDebugEnabled()) {
-            log.debug(String.format("[%s] Validating header: %s", requestId, headerKey));
-        }
-        for (String header : headersJson.keySet()) {
-            if (header.equalsIgnoreCase(headerKey)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Convert an object to a JSON object.
-     *
-     * @param object json convertible object
-     * @return JSONObject of passed object
-     * @throws ExtensionException if the passed object cannot be converted to JSON
-     */
-    public static JSONObject convertObjectToJson(Object object) throws ExtensionException {
-        String jsonString;
-
-        try {
-            // Convert Object to JSON string
-            jsonString = objectMapper.writeValueAsString(object);
-
-            // Parse JSON string to JSONObject
-            return new JSONObject(jsonString);
-        } catch (JsonProcessingException | JSONException e) {
-            throw new ExtensionException(
-                    Response.Status.BAD_REQUEST, "invalid_request", e.getMessage().replaceAll("[\r\n]", ""), e);
-        }
-    }
+    private static final ValidatorFactory VALIDATOR_FACTORY = Validation.buildDefaultValidatorFactory();
+    private static final Validator VALIDATOR = VALIDATOR_FACTORY.getValidator();
 
     /**
      * Extracts the account reference number from the provided account reference object.
@@ -171,146 +109,18 @@ public class CommonConsentValidationUtil {
      */
     public static String getApiVersion(String consentType) {
         if (ExtensionEnums.ConsentTypeEnum.ACCOUNTS.toString().equals(consentType)) {
-            return ConfigurationConstants.AIS_API_VERSION;
+            return ExtensionConfiguration.getAisApiVersion();
         }
 
-        if (ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString().equals(consentType)
-                || ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString().equals(consentType)
-                || ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString().equals(consentType)) {
-            return ConfigurationConstants.PIS_API_VERSION;
+        if (ExtensionEnums.ConsentTypeEnum.isPaymentType(consentType)) {
+            return ExtensionConfiguration.getPisApiVersion();
         }
 
         if (ExtensionEnums.ConsentTypeEnum.FUNDS_CONFIRMATION.toString().equals(consentType)) {
-            return ConfigurationConstants.PIIS_API_VERSION;
+            return ExtensionConfiguration.getPiisApiVersion();
         }
 
         return "";
-    }
-
-    /**
-     * Returns authorisation status based on preference.
-     * @param isSCARequired whether Strong Customer Authentication is required for consents
-     * @param headers request headers
-     * @return the authorization status after consent creation (implicit authorization)
-     */
-    public static String getAuthorizationStatus(boolean isSCARequired, JSONObject headers) {
-        return (isSCARequired) ?
-                ExtensionEnums.ScaStatusEnum.SCA_METHOD_SELECTED.toString() :
-                headers.has(CommonConstants.PSU_ID_HEADER) ?
-                        ExtensionEnums.ScaStatusEnum.PSU_IDENTIFIED.toString() :
-                        ExtensionEnums.ScaStatusEnum.RECEIVED.toString();
-    }
-
-    /**
-     * Method to get the Consent Manage Service Handler.
-     *
-     * @param requestPath Request path of the request
-     * @return ServiceHandler
-     */
-    public static ConsentInitiationHandler getConsentInitiationHandler(String requestPath)
-            throws ExtensionException, ValidationFailureException {
-
-        switch (getServiceDifferentiatingRequestPath(requestPath)) {
-            case CommonConstants.ACCOUNTS_CONSENT_PATH:
-                return new AccountConsentInitiationHandler();
-            case CommonConstants.PAYMENTS_SERVICE_PATH:
-            case CommonConstants.BULK_PAYMENTS_SERVICE_PATH:
-            case CommonConstants.PERIODIC_PAYMENTS_SERVICE_PATH:
-                return new PaymentConsentInitiationHandler();
-            case CommonConstants.FUNDS_CONFIRMATIONS_SERVICE_PATH:
-                return new FundsConfirmationConsentInitiationHandler();
-            case CommonConstants.EXPLICIT_AUTHORISATION_PATH_END:
-            case CommonConstants.PAYMENT_EXPLICIT_CANCELLATION_AUTHORISATION_PATH_END:
-                return new ConsentAuthorisationInitiationHandler();
-            default:
-                throw new ValidationFailureException(ValidationFailureException.ErrorCode.NOT_FOUND,
-                        ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR, null,
-                                ErrorConstants.PATH_INVALID));
-        }
-    }
-
-    /**
-     * Method to get the account list authorize handler.
-     *
-     * @param type consent type of the request
-     * @return the selected account list retrieval handler
-     */
-    public static ConsentAuthorizationHandler getAuthorizationHandler(String type) {
-
-        ConsentAuthorizationHandler authorizationHandler = null;
-
-        if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.ACCOUNTS.toString(), type)) {
-            authorizationHandler = new AccountConsentAuthorizeHandler();
-        } else if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString(), type)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString(), type)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString(), type)) {
-            authorizationHandler = new PaymentConsentAuthorizeHandler();
-        } else if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.FUNDS_CONFIRMATION.toString(), type)) {
-            authorizationHandler = new FundsConfirmationConsentAuthorizeHandler();
-        }
-        return authorizationHandler;
-    }
-
-    /**
-     * Method to get the consent validation handler for the type of the consent being accessed.
-     *
-     * @param consentType consent type of the consent being accessed
-     * @return the selected consent validation handler
-     * @throws ValidationFailureException if the consent type is not recognised
-     * @throws ExtensionException if construction of the error failed
-     */
-    public static ConsentValidationHandler getConsentValidationHandler(String consentType)
-            throws ValidationFailureException, ExtensionException {
-
-        if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.ACCOUNTS.toString(), consentType)) {
-            return new AccountConsentValidationHandler();
-        }
-        if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString(), consentType)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString(), consentType)
-                || StringUtils.equals(ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString(), consentType)) {
-            return new PaymentConsentValidationHandler();
-        }
-        if (StringUtils.equals(ExtensionEnums.ConsentTypeEnum.FUNDS_CONFIRMATION.toString(), consentType)) {
-            return new FundsConfirmationConsentValidationHandler();
-        }
-        throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
-                        TPPMessage.CodeEnum.CONSENT_UNKNOWN, ErrorConstants.INITIATED_CONSENT_TYPE_INVALID));
-    }
-
-    /**
-     * Used to get the consent type an authorisation request.
-     *
-     * @param requestPath authorisation request path string
-     * @return returns the relative consent type for the request
-     */
-    public static String getConsentTypeFromRequestPath(String requestPath) {
-
-        String[] pathElements = requestPath.split("/");
-        String authorisationConsentType;
-
-        if (pathElements.length > 1) {
-            if (CommonConstants.FUNDS_CONFIRMATIONS_SERVICE_PATH.equals(pathElements[1])) {
-                authorisationConsentType = pathElements[1];
-            } else {
-                authorisationConsentType = pathElements[0];
-            }
-        } else {
-            authorisationConsentType = pathElements[0];
-        }
-
-        switch (authorisationConsentType) {
-            case CommonConstants.PAYMENTS_SERVICE_PATH:
-                return ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString();
-            case CommonConstants.BULK_PAYMENTS_SERVICE_PATH:
-                return ExtensionEnums.ConsentTypeEnum.BULK_PAYMENTS.toString();
-            case CommonConstants.PERIODIC_PAYMENTS_SERVICE_PATH:
-                return ExtensionEnums.ConsentTypeEnum.PERIODIC_PAYMENTS.toString();
-            case CommonConstants.FUNDS_CONFIRMATIONS_SERVICE_PATH:
-                return ExtensionEnums.ConsentTypeEnum.FUNDS_CONFIRMATION.toString();
-            default:
-                return ExtensionEnums.ConsentTypeEnum.ACCOUNTS.toString();
-        }
     }
 
     /**
@@ -334,251 +144,6 @@ public class CommonConsentValidationUtil {
     }
 
     /**
-     * Gets the configured default SCA approach.
-     *
-     * @return default SCA approach
-     */
-    public static ScaApproach getDefaultScaApproach() {
-        List<ScaApproach> scaApproaches = getSupportedScaApproaches();
-
-        for (ScaApproach scaApproach : scaApproaches) {
-            if (scaApproach.isDefault()) {
-                return scaApproach;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Gets the configured default SCA method.
-     *
-     * @return default SCA method
-     */
-    public static ScaMethod getDefaultScaMethod() {
-        List<ScaMethod> scaMethods = getSupportedScaMethods();
-
-        for (ScaMethod scaMethod : scaMethods) {
-            if (scaMethod.isDefault()) {
-                return scaMethod;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Gets the SCA approach from the list of approaches.
-     *
-     * @param scaApproachEnum the SCA approach to find
-     * @return found SCA approach
-     */
-    public static ScaApproach getScaApproach(ExtensionEnums.ScaApproachEnum scaApproachEnum) {
-        List<ScaApproach> scaApproaches = getSupportedScaApproaches();
-
-        for (ScaApproach scaApproach : scaApproaches) {
-            if (scaApproachEnum.equals(scaApproach.getApproach())) {
-                return scaApproach;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Determines the current SCA approach and the SCA methods based on the parameters.
-     *
-     * @param isTppRedirectPreferred TPP-Redirect-Preferred header
-     * @param isScaRequired          to know if SCA is required or not
-     * @return returns the current SCA approach and methods
-     */
-    public static Map<String, Object> getScaApproachAndMethods(Boolean isTppRedirectPreferred, boolean isScaRequired) {
-        List<ScaMethod> supportedScaMethods = getSupportedScaMethods();
-
-        ScaApproach currentScaApproach = new ScaApproach();
-        List<ScaMethod> currentScaMethods = new ArrayList<>();
-
-        if (Boolean.TRUE.equals(isTppRedirectPreferred)) {
-            currentScaApproach = getScaApproach(ExtensionEnums.ScaApproachEnum.REDIRECT);
-            if (isScaRequired) {
-                currentScaMethods.add(getScaMethod(ExtensionEnums.ScaApproachEnum.REDIRECT));
-            }
-        } else if (Boolean.FALSE.equals(isTppRedirectPreferred)) {
-            currentScaApproach = getScaApproach(ExtensionEnums.ScaApproachEnum.DECOUPLED);
-            if (isScaRequired) {
-                currentScaMethods.add(getScaMethod(ExtensionEnums.ScaApproachEnum.DECOUPLED));
-            }
-        } else {
-            // When TPP-Redirect-Preferred header is not sent
-            if (isScaRequired) {
-                if (supportedScaMethods.size() == 1) {
-                    // If SCA is required and there is only a single supported SCA method, it becomes the selected
-                    // SCA method and the mapped approach of the SCA method becomes the SCA approach
-                    currentScaApproach = getScaApproach(supportedScaMethods.get(0).getMappedApproach());
-                    currentScaMethods = supportedScaMethods;
-                } else {
-                    // If a default SCA method is configured then that becomes the SCA approach and method
-                    ScaMethod defaultScaMethod = getDefaultScaMethod();
-
-                    if (defaultScaMethod != null) {
-                        currentScaApproach = getDefaultScaApproach();
-                        currentScaMethods.add(defaultScaMethod);
-                    } else {
-                        // Approach not finalised and the TPP/PSU will be given the choice to select
-                        currentScaMethods = supportedScaMethods;
-                    }
-                }
-            } else {
-                currentScaApproach = getDefaultScaApproach();
-            }
-        }
-
-        Map<String, Object> scaApproachAndMethods = new HashMap<>();
-        scaApproachAndMethods.put(CommonConstants.SCA_APPROACH_KEY, currentScaApproach);
-        scaApproachAndMethods.put(CommonConstants.SCA_METHODS_KEY, currentScaMethods);
-
-        return scaApproachAndMethods;
-    }
-
-    /**
-     * Gets the SCA method for the specified approach from the list of methods.
-     *
-     * @param scaApproachEnum the SCA method to find
-     * @return found SCA method
-     */
-    public static ScaMethod getScaMethod(ExtensionEnums.ScaApproachEnum scaApproachEnum) {
-        List<ScaMethod> scaMethods = getSupportedScaMethods();
-
-        for (ScaMethod scaMethod : scaMethods) {
-            if (scaApproachEnum.equals(scaMethod.getMappedApproach())) {
-                return scaMethod;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns the part of the path that differentiates the request path into
-     * either Accounts, Payments or Funds confirmations.
-     *
-     * @param requestPath the request path string
-     * @return the part to recognize the consent service related to the request
-     */
-    public static String getServiceDifferentiatingRequestPath(String requestPath) {
-
-        if (requestPath == null) {
-            return "";
-        }
-
-        String[] requestPathArray = requestPath.split("/");
-
-        if (StringUtils.contains(requestPath, CommonConstants.EXPLICIT_AUTHORISATION_PATH_END)
-                || StringUtils.contains(requestPath,
-                CommonConstants.PAYMENT_EXPLICIT_CANCELLATION_AUTHORISATION_PATH_END)) {
-            /*
-            Example request paths applicable here:
-            1) consents/{consentId}/authorisations
-            2) {payment-service}/{payment-product}/{paymentId}/cancellation-authorisations
-            3) {payment-service}/{payment-product}/{paymentId}/authorisations
-            4) consents/confirmation-of-funds/{consentId}/authorisations
-             */
-            if (StringUtils.equals(CommonConstants.ACCOUNTS_CONSENT_PATH, requestPathArray[0])
-                    && !StringUtils.equals(CommonConstants.FUNDS_CONFIRMATIONS_SERVICE_PATH,
-                    requestPathArray[1])) {
-                /*
-                Example request paths applicable here:
-                1) consents/{consentId}/authorisations
-                 */
-                return requestPathArray[2];
-            }
-            /*
-            Example request paths applicable here:
-            1) {payment-service}/{payment-product}/{paymentId}/cancellation-authorisations
-            2) {payment-service}/{payment-product}/{paymentId}/authorisations
-            3) consents/confirmation-of-funds/{consentId}/authorisations
-             */
-            return requestPathArray[3];
-        }
-
-        /*
-        Example request paths applicable here:
-        1) consents
-        2) payments/{payment-product}
-        3) consents/confirmation-of-funds
-         */
-        if (requestPathArray.length > 1) {
-            if (CommonConstants.FUNDS_CONFIRMATIONS_SERVICE_PATH.equals(requestPathArray[1])) {
-                /*
-                Example request paths applicable here:
-                1) consents/confirmation-of-funds
-                 */
-                return requestPathArray[1];
-            } else {
-                /*
-                Example request paths applicable here:
-                1) consents
-                2) payments/{payment-product}
-                 */
-                return requestPathArray[0];
-            }
-        } else {
-            /*
-            Example request paths applicable here:
-            1) consents
-             */
-            return requestPathArray[0];
-        }
-    }
-
-    /**
-     * To get a list of ScaMethod.
-     *
-     * @return a list of configured SCA methods after mapping it to the ScaMethod class.
-     */
-    public static List<ScaMethod> getSupportedScaMethods() {
-        List<ScaMethod> supportedScaMethods = new ArrayList<>();
-
-        for (Map<String, String> supportedScaMethod : ConfigurationConstants.SUPPORTED_SCA_METHODS) {
-            ScaMethod scaMethod = new ScaMethod();
-
-            scaMethod.setAuthenticationType(supportedScaMethod.get(CommonConstants.SCA_TYPE));
-            scaMethod.setAuthenticationVersion(supportedScaMethod.get(CommonConstants.SCA_VERSION));
-            scaMethod.setAuthenticationMethodId(supportedScaMethod.get(CommonConstants.SCA_ID));
-            scaMethod.setName(supportedScaMethod.get(CommonConstants.SCA_NAME));
-            scaMethod.setMappedApproach(ExtensionEnums.ScaApproachEnum.fromValue(supportedScaMethod
-                    .get(CommonConstants.SCA_MAPPED_APPROACH)));
-            scaMethod.setDescription(supportedScaMethod.get(CommonConstants.SCA_DESCRIPTION));
-            scaMethod.setDefault(Boolean.parseBoolean(supportedScaMethod.get(CommonConstants.SCA_DEFAULT)));
-
-            supportedScaMethods.add(scaMethod);
-        }
-
-        return supportedScaMethods;
-    }
-
-    /**
-     * To get a list of ScaApproach.
-     *
-     * @return a list of configured SCA approaches after mapping it to the ScaApproach class.
-     */
-    public static List<ScaApproach> getSupportedScaApproaches() {
-        List<ScaApproach> supportedScaApproaches = new ArrayList<>();
-
-        for (Map<String, String> supportedScaApproach : ConfigurationConstants.SUPPORTED_SCA_APPROACHES) {
-            ScaApproach scaApproach = new ScaApproach();
-
-            scaApproach.setApproach(ExtensionEnums.ScaApproachEnum
-                    .fromValue(supportedScaApproach.get(CommonConstants.SCA_NAME)));
-            scaApproach.setDefault(Boolean.parseBoolean(supportedScaApproach.get(CommonConstants.SCA_DEFAULT)));
-
-            supportedScaApproaches.add(scaApproach);
-        }
-
-        return supportedScaApproaches;
-    }
-
-    /**
      * Checks if the account refs has an unsupported account ref.
      *
      * @param accountRefKeys account reference types sent in the initiation payload
@@ -586,7 +151,7 @@ public class CommonConsentValidationUtil {
      */
     private static boolean hasUnSupportedAccountRefTypes(Set<String> accountRefKeys) {
 
-        List<String> configuredAccountRefTypes = ConfigurationConstants.SUPPORTED_ACC_REFERNCE_TYPES;
+        List<String> configuredAccountRefTypes = ExtensionConfiguration.getSupportedAccountReferenceTypes();
         for (String accountRef : accountRefKeys) {
             // Skipping currency since it is not an account reference type
             if (StringUtils.equals(accountRef, CommonConstants.CURRENCY)) {
@@ -599,25 +164,6 @@ public class CommonConsentValidationUtil {
         return false;
     }
 
-    /**
-     * Validates the TPP-Redirect-Preferred request header.
-     *
-     * @param headersJSON request headers
-     * @return if redirect approach preferred or not
-     */
-    public static Optional<Boolean> isTppRedirectPreferred(String requestId, JSONObject headersJSON) {
-        if (log.isDebugEnabled()) {
-            log.debug(String.format("[%s] Determining whether the TPP-Redirect-Preferred header is true or false or" +
-                    "not present", requestId));
-        }
-        if (checkCaseIgnoredHeader(requestId, headersJSON,
-                CommonConstants.TPP_REDIRECT_PREFERRED_HEADER)) {
-            return Optional.of(Boolean.parseBoolean(headersJSON
-                    .getString(CommonConstants.TPP_REDIRECT_PREFERRED_HEADER)));
-        }
-
-        return Optional.empty();
-    }
 
     /**
      * Validates a format of UUID.
@@ -626,7 +172,7 @@ public class CommonConsentValidationUtil {
      * @return whether the sting matches UUID pattern
      */
     public static boolean isValidUuid(String stringUuid) {
-        return uuidPattern.matcher(stringUuid.trim()).matches();
+        return UUID_PATTERN.matcher(stringUuid.trim()).matches();
     }
 
     /**
@@ -648,107 +194,10 @@ public class CommonConsentValidationUtil {
         try {
             parsedDate = LocalDate.parse(dateToParse, DateTimeFormatter.ISO_DATE);
         } catch (DateTimeParseException e) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                    ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR, errorCode, errorMessage));
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
+                    ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR, errorCode, errorMessage), e);
         }
         return parsedDate;
-    }
-
-    public static void validateRequestIdentificationHeader(Object headers)
-            throws ValidationFailureException, ExtensionException {
-        // To allow idempotency header validation it needs to be forwarded
-        // Therefore X-Request-ID needs to be added to the configuration in the IS deployment.toml
-        // [financial_services.consent.manage_extension]
-        // allowed_headers = ["X-Request-ID"]
-
-        // Assuming the accelerator only forwards (even empty) JSON object
-        JSONObject headersJSON = convertObjectToJson(headers);
-
-        if (!headersJSON.has(CommonConstants.X_REQUEST_ID_HEADER)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                    ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
-                            TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.X_REQUEST_ID_MISSING));
-        }
-
-        if (!CommonConsentValidationUtil.isValidUuid(headersJSON.getString(CommonConstants.X_REQUEST_ID_HEADER))) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                    ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
-                            TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.X_REQUEST_ID_INVALID));
-        }
-    }
-
-    /**
-     * Reads the X-Request-ID header from the request headers sent by the accelerator.
-     *
-     * @param headers request headers of the request
-     * @return value of the X-Request-ID header, or an empty string if it is absent
-     * @throws ExtensionException if the request headers cannot be read as JSON
-     */
-    public static String getXRequestId(Object headers) throws ExtensionException {
-
-        return convertObjectToJson(headers).optString(CommonConstants.X_REQUEST_ID_HEADER);
-    }
-
-    /**
-     * Validates the PSU-IP-Address request header.
-     *
-     * @param headers request headers
-     */
-    public static void validatePsuIpAddress(String requestId, JSONObject headers)
-            throws ValidationFailureException, ExtensionException {
-
-        if (log.isDebugEnabled()) {
-            log.debug(String.format("[%s] Validating PSU-IP-Address header", requestId));
-        }
-        if (headers.has(CommonConstants.PSU_IP_ADDRESS_HEADER)) {
-            String psuIpAddress = headers.getString(CommonConstants.PSU_IP_ADDRESS_HEADER);
-
-            if (StringUtils.isEmpty(psuIpAddress)) {
-                throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                        ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
-                                TPPMessage.CodeEnum.FORMAT_ERROR, String.format("Invalid %s header",
-                                        CommonConstants.PSU_IP_ADDRESS_PROPER_CASE_HEADER)
-                ));
-            }
-        } else {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                    ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
-                            TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.PSU_IP_ADDRESS_MISSING));
-        }
-    }
-
-    /**
-     * Validates the TPP-Redirect-Preferred request header.
-     *
-     * @param headers request headers
-     */
-    public static void validateTppRedirectPreferredHeader(String requestId, JSONObject headers)
-            throws ValidationFailureException, ExtensionException {
-
-        if (log.isDebugEnabled()) {
-            log.debug(String.format("[%s] Validating TPP-Redirect-Preferred header according to the specification",
-                    requestId));
-        }
-        Optional<Boolean> isRedirectPreferred = isTppRedirectPreferred(requestId, headers);
-
-        if ((isRedirectPreferred.isPresent() && BooleanUtils.isTrue(isRedirectPreferred.get()))
-                && getScaApproach(ExtensionEnums.ScaApproachEnum.REDIRECT) == null) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                    ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
-                            TPPMessage.CodeEnum.FORMAT_ERROR, String.format("%s SCA Approach is not supported",
-                                    ExtensionEnums.ScaApproachEnum.REDIRECT)));
-        }
-
-        if ((isRedirectPreferred.isPresent() && BooleanUtils.isFalse(isRedirectPreferred.get()))
-                && getScaApproach(ExtensionEnums.ScaApproachEnum.DECOUPLED) == null) {
-
-            //ToDo: Since decoupled approach is not supported yet, an error is thrown if the redirect header is false.
-            //issue: https://github.com/wso2-enterprise/financial-open-banking/issues/6858
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                    ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
-                            TPPMessage.CodeEnum.FORMAT_ERROR, String.format("%s SCA Approach is not supported",
-                                    ExtensionEnums.ScaApproachEnum.DECOUPLED)));
-        }
     }
 
     /**
@@ -761,7 +210,7 @@ public class CommonConsentValidationUtil {
             throws ValidationFailureException, ExtensionException {
 
         if (!StringUtils.equals(registeredClientId, consentClientId)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.FORBIDDEN,
+            throw new ValidationFailureException(Response.Status.FORBIDDEN,
                     ErrorUtil.constructBerlinError("headers", TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.RESOURCE_UNKNOWN, ErrorConstants.NO_CONSENT_FOR_CLIENT_ERROR));
         }
@@ -777,16 +226,10 @@ public class CommonConsentValidationUtil {
             throws ValidationFailureException, ExtensionException {
 
         if (!StringUtils.equals(requestConsentType, typeOfRetrievedConsent)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.CONSENT_ID_TYPE_MISMATCH));
         }
-    }
-
-    public static JSONObject getIdempotencyHeaderJSON(String xRequestID) {
-        JSONObject idempotencyHeader = new JSONObject();
-        idempotencyHeader.put(CommonConstants.X_REQUEST_ID_PROPER_CASE_HEADER, xRequestID);
-        return idempotencyHeader;
     }
 
     /**
@@ -804,36 +247,28 @@ public class CommonConsentValidationUtil {
         // Set revocation response data
         StoredBasicConsentResourceData consentData = requestBody.getData().getConsentResource();
         SuccessResponseConsentRevocationData responseData = new SuccessResponseConsentRevocationData();
-        if (consentData.getType().contains(CommonConstants.PAYMENTS)) {
+        if (ExtensionEnums.ConsentTypeEnum.isPaymentType(consentData.getType())) {
             responseData.setRevocationStatusName(ExtensionEnums.TransactionStatusEnum.CANC.name());
         } else {
             responseData.setRevocationStatusName(ExtensionEnums.ConsentStatusEnum.TERMINATED_BY_TPP.toString());
         }
-        responseData.setRequireTokenRevocation(getIfRequireTokenRevocation(consentData));
+        responseData.setRequireTokenRevocation(String.valueOf(isTokenRevocationRequired(consentData)));
 
         validationResponse.setData(responseData);
         return validationResponse;
     }
 
     /**
-     * Decide if token revocation is necessary given the status of consent.
+     * Decide if token revocation is necessary given the status of consent. A token can only exist for a
+     * consent that was authorized, or for a transaction that was accepted.
      *
      * @param consentData consent data from request
-     * @return whether token revocation is required or not as a string
+     * @return whether token revocation is required
      */
-    private static String getIfRequireTokenRevocation(StoredBasicConsentResourceData consentData) {
-        // Check if consent is authorized
-        if (ExtensionEnums.ConsentStatusEnum.VALID.toString().equals(consentData.getStatus())) {
-            return "true";
-        }
-
-        // Check if a valid token can exist for transaction
+    private static boolean isTokenRevocationRequired(StoredBasicConsentResourceData consentData) {
         //ToDo: Verify that these are the only statuses of transaction where a token revocation would be necessary
-        if (ExtensionEnums.TransactionStatusEnum.ACCP.name().equals(consentData.getStatus())) {
-            return "true";
-        }
-
-        return "false";
+        return ExtensionEnums.ConsentStatusEnum.VALID.toString().equals(consentData.getStatus())
+                || ExtensionEnums.TransactionStatusEnum.ACCP.name().equals(consentData.getStatus());
     }
 
     /**
@@ -852,7 +287,7 @@ public class CommonConsentValidationUtil {
         PreProcessConsentRetrievalData data = requestBody.getData();
         StoredBasicConsentResourceData consentResource = data.getConsentResource();
         String requestPath = data.getConsentResourcePath();
-        String consentType = CommonConsentValidationUtil.getConsentTypeFromRequestPath(requestPath);
+        String consentType = ConsentPathUtil.getConsentTypeFromRequestPath(requestPath);
         String consentId = requestBody.getData().getConsentId();
 
         // Validate client
@@ -861,16 +296,8 @@ public class CommonConsentValidationUtil {
         }
 
         // Get request client id from the headers
-        String requestClientId;
-        JSONObject headers;
-        try {
-            headers = CommonConsentValidationUtil.convertObjectToJson(data.getRequestHeaders());
-            requestClientId = headers.getString(CommonConstants.X_WSO2_CLIENT_ID_KEY);
-        } catch (JSONException e) {
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                    "Organization ID not found for the client");
-        }
-        CommonConsentValidationUtil.validateClient(requestClientId, data.getConsentResource().getClientId());
+        JSONObject headers = JsonUtil.convertObjectToJson(data.getRequestHeaders());
+        validateClient(HeaderUtil.getClientId(headers), data.getConsentResource().getClientId());
 
         // Validate consent type
         if (log.isDebugEnabled()) {
@@ -887,14 +314,14 @@ public class CommonConsentValidationUtil {
         if (StringUtils.equals(ExtensionEnums.ConsentStatusEnum.REVOKED_BY_PSU.toString(), consentResource.getStatus())
                 || StringUtils.equals(ExtensionEnums.ConsentStatusEnum.TERMINATED_BY_TPP.toString(),
                 consentResource.getStatus())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.CONSENT_ALREADY_DELETED));
         }
 
         // Check whether the consent is already expired before deleting
         if (StringUtils.equals(ExtensionEnums.ConsentStatusEnum.EXPIRED.toString(), consentResource.getStatus())) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.UNAUTHORIZED,
+            throw new ValidationFailureException(Response.Status.UNAUTHORIZED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CONSENT_INVALID, ErrorConstants.CONSENT_ALREADY_EXPIRED));
         }
@@ -911,10 +338,10 @@ public class CommonConsentValidationUtil {
     private static void validateIfConsentTypeIsRevocable(String consentType)
             throws ValidationFailureException, ExtensionException {
         if (ExtensionEnums.ConsentTypeEnum.PAYMENTS.toString().equals(consentType)) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.METHOD_NOT_ALLOWED,
+            throw new ValidationFailureException(Response.Status.METHOD_NOT_ALLOWED,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
                             TPPMessage.CodeEnum.CANCELLATION_INVALID,
-                            String.format(ErrorConstants.CANCELLATION_NOT_APPLICABLE)));
+                            ErrorConstants.CANCELLATION_NOT_APPLICABLE));
         }
     }
 
@@ -924,7 +351,7 @@ public class CommonConsentValidationUtil {
      * @param context context of the constraint validator
      * @param violationMessage violation message to return
      */
-    public static void setConstrainViolation(ConstraintValidatorContext context, String violationMessage) {
+    public static void setConstraintViolation(ConstraintValidatorContext context, String violationMessage) {
         context.disableDefaultConstraintViolation();
         context.buildConstraintViolationWithTemplate(violationMessage).addConstraintViolation();
     }
@@ -979,25 +406,50 @@ public class CommonConsentValidationUtil {
 
         // Map to object
         try {
-            mappedObject = objectMapper.readValue(jsonPayload, modelClass);
+            mappedObject = JsonUtil.readValue(jsonPayload, modelClass);
         } catch (JsonProcessingException e) {
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError(null, TPPMessage.CategoryEnum.ERROR,
-                            TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.PAYLOAD_FORMAT_ERROR));
+                            TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.PAYLOAD_FORMAT_ERROR), e);
         }
 
         // Find violations
-        Set<ConstraintViolation<T>> violations = validator.validate(mappedObject);
+        Set<ConstraintViolation<T>> violations = VALIDATOR.validate(mappedObject);
 
         // Throw first validation error from validation failures
         if (!violations.isEmpty()) {
-            String[] codeAndMessage = splitViolationMessage(violations.iterator().next().getMessage());
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
-                    ErrorUtil.constructBerlinError("payload", TPPMessage.CategoryEnum.ERROR,
-                            TPPMessage.CodeEnum.valueOf(codeAndMessage[0]), codeAndMessage[1]));
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
+                    buildViolationError(violations.iterator().next().getMessage()));
         }
 
         return mappedObject;
+    }
+
+    /**
+     * Builds the error reported for a constraint violation. The error code is read from the violation message,
+     * which is built by {@link #buildViolationMessage(TPPMessage.CodeEnum, String)}. A message carrying no known
+     * error code, as a constraint of a stock annotation reports, is returned as it stands under a format error,
+     * so that an unannotated constraint reports the violation rather than failing the request.
+     *
+     * @param violationMessage violation message reported by the validator
+     * @return the violation as a nextGenPSD2 error
+     * @throws ExtensionException if construction of the error failed
+     */
+    private static JSONObject buildViolationError(String violationMessage) throws ExtensionException {
+        String[] codeAndMessage = splitViolationMessage(violationMessage);
+
+        if (codeAndMessage.length == 2) {
+            try {
+                return ErrorUtil.constructBerlinError("payload", TPPMessage.CategoryEnum.ERROR,
+                        TPPMessage.CodeEnum.valueOf(codeAndMessage[0]), codeAndMessage[1]);
+            } catch (IllegalArgumentException e) {
+                log.warn(String.format("Validation constraint reported the unknown error code %s. Reporting the "
+                        + "violation as a format error.", codeAndMessage[0].replaceAll("[\r\n]", "")));
+            }
+        }
+
+        return ErrorUtil.constructBerlinError("payload", TPPMessage.CategoryEnum.ERROR,
+                TPPMessage.CodeEnum.FORMAT_ERROR, violationMessage);
     }
 
     /**
@@ -1008,7 +460,7 @@ public class CommonConsentValidationUtil {
      */
     public static String getAccountReferenceType(JSONObject accountRefObject) {
 
-        List<String> configuredAccountReferences = ConfigurationConstants.SUPPORTED_ACC_REFERNCE_TYPES;
+        List<String> configuredAccountReferences = ExtensionConfiguration.getSupportedAccountReferenceTypes();
         for (String accountRef : configuredAccountReferences) {
             if (accountRefObject.has(accountRef)) {
                 return accountRef;
@@ -1025,7 +477,7 @@ public class CommonConsentValidationUtil {
      */
     public static String getAccountReferenceType(Map<String, ?> accountRefObject) {
 
-        List<String> configuredAccountReferences = ConfigurationConstants.SUPPORTED_ACC_REFERNCE_TYPES;
+        List<String> configuredAccountReferences = ExtensionConfiguration.getSupportedAccountReferenceTypes();
         for (String accountRef : configuredAccountReferences) {
             if (accountRefObject.containsKey(accountRef)) {
                 return accountRef;
@@ -1046,8 +498,8 @@ public class CommonConsentValidationUtil {
                                                         PopulateConsentAuthorizeScreenData requestData,
                                                         JSONObject accountRefJSON)
             throws AuthorizationFailureException {
-        String payableAccountsEndpoint = ConfigurationConstants.PAYABLE_ACCOUNTS_RETRIEVAL_ENDPOINT;
-        JSONArray userAccountsArray = DataRetrievalUtil.getAccountsFromEndpoint(requestData.getUserId(),
+        String payableAccountsEndpoint = ExtensionConfiguration.getPayableAccountsEndpoint();
+        JSONArray userAccountsArray = DataRetrievalUtil.getUserAccounts(requestData.getUserId(),
                 payableAccountsEndpoint, new HashMap<>(), new HashMap<>());
 
         if (userAccountsArray == null || userAccountsArray.isEmpty()) {
@@ -1120,20 +572,20 @@ public class CommonConsentValidationUtil {
             throws ExtensionException, ValidationFailureException {
         JSONObject consentInitiationDataJSON;
         try {
-            consentInitiationDataJSON = convertObjectToJson(requestBody.getData().getConsentInitiationData());
+            consentInitiationDataJSON = JsonUtil.convertObjectToJson(requestBody.getData().getConsentInitiationData());
 
             if (consentInitiationDataJSON.isEmpty()) {
                 // If payload is empty
-                throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+                throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                         ErrorUtil.constructBerlinError("payload", TPPMessage.CategoryEnum.ERROR,
                                 TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.PAYLOAD_NOT_PRESENT_ERROR));
             }
 
         } catch (JSONException e) {
             // If payload is not JSON
-            throw new ValidationFailureException(ValidationFailureException.ErrorCode.BAD_REQUEST,
+            throw new ValidationFailureException(Response.Status.BAD_REQUEST,
                     ErrorUtil.constructBerlinError("payload", TPPMessage.CategoryEnum.ERROR,
-                    TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.PAYLOAD_FORMAT_ERROR));
+                    TPPMessage.CodeEnum.FORMAT_ERROR, ErrorConstants.PAYLOAD_FORMAT_ERROR), e);
         }
     }
 
@@ -1144,15 +596,16 @@ public class CommonConsentValidationUtil {
      * @param queryParams query parameters sent with the authorization request
      * @throws AuthorizationFailureException if client id validation failed
      */
-    public static void validateClient(StoredDetailedConsentResourceData consentResource,
-                                      JSONObject queryParams) throws ExtensionException, AuthorizationFailureException {
+    public static void validateAuthorizingClient(StoredDetailedConsentResourceData consentResource,
+                                                 JSONObject queryParams)
+            throws ExtensionException, AuthorizationFailureException {
         try {
             String clientId = queryParams.getString(CommonConstants.CLIENT_ID_PARAM);
             validateClient(clientId, consentResource.getClientId());
         } catch (JSONException e) {
-            throw new AuthorizationFailureException("Client id not found in request");
+            throw new AuthorizationFailureException(ErrorConstants.CLIENT_ID_NOT_FOUND, e);
         } catch (ValidationFailureException e) {
-            throw new AuthorizationFailureException(ErrorConstants.NO_CONSENT_FOR_CLIENT_ERROR);
+            throw new AuthorizationFailureException(ErrorConstants.NO_CONSENT_FOR_CLIENT_ERROR, e);
         }
     }
 
@@ -1203,34 +656,16 @@ public class CommonConsentValidationUtil {
             throws ExtensionException {
         StoredAuthorization authorizingResource;
         try {
-            authorizingResource = objectMapper.readValue(retrievalMetadata
+            authorizingResource = JsonUtil.readValue(retrievalMetadata
                     .getJSONObject(CommonConstants.AUTHORIZING_AUTHORIZATION).toString(),
                     StoredAuthorization.class);
         } catch (JsonProcessingException e) {
             // Should be unreachable given that a validated authorization resource is attached
             // to metadata when populating consent page
-            throw new ExtensionException(Response.Status.BAD_REQUEST, "invalid_request",
-                    "Authorization resource being authorized is invalid");
+            throw new ExtensionException(Response.Status.BAD_REQUEST, ErrorConstants.INVALID_REQUEST,
+                    ErrorConstants.AUTHORIZING_AUTHORIZATION_INVALID, e);
         }
         return authorizingResource;
     }
 
-    /**
-     * Serializes a built response object to JSON using the configured object mapper.
-     * <p>
-     * Response models carrying Jackson annotations must be serialized through this method rather than
-     * through {@link JSONObject}, since only the object mapper honours those annotations.
-     *
-     * @param response built response object for the endpoint
-     * @return the response object serialized to a JSON string
-     * @throws ExtensionException if the response object cannot be serialized
-     */
-    public static String serializeToJsonString(Object response) throws ExtensionException {
-        try {
-            return objectMapper.writeValueAsString(response);
-        } catch (JsonProcessingException e) {
-            throw new ExtensionException(Response.Status.INTERNAL_SERVER_ERROR, "server_error",
-                    "Failed to parse built response object to JSON.");
-        }
-    }
 }
